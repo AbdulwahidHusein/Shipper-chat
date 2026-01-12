@@ -7,6 +7,9 @@ import passport from 'passport';
 import './config/passport';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
+import sessionRoutes from './routes/session.routes';
+import messageRoutes from './routes/message.routes';
+import sharedContentRoutes from './routes/shared-content.routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
 // Load environment variables
@@ -32,6 +35,12 @@ app.use(passport.initialize());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/sessions', sessionRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/shared', sharedContentRoutes);
+app.use('/api/sessions', sessionRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/shared', sharedContentRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -63,3 +63,37 @@ export const updateOwnProfile = async (req: Request, res: Response): Promise<voi
     sendError(res, 'Failed to update profile', 'UPDATE_ERROR', 500);
   }
 };
+
+export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'User not authenticated', 'UNAUTHORIZED', 401);
+      return;
+    }
+
+    const { findAllUsers } = await import('../services/user.service');
+    const users = await findAllUsers(req.user.id);
+
+    sendSuccess(res, users);
+  } catch (error) {
+    console.error('Get all users error:', error);
+    sendError(res, 'Failed to fetch users', 'FETCH_ERROR', 500);
+  }
+};
+
+export const getOnlineUsers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      sendError(res, 'User not authenticated', 'UNAUTHORIZED', 401);
+      return;
+    }
+
+    const { findOnlineUsers } = await import('../services/user.service');
+    const users = await findOnlineUsers(req.user.id);
+
+    sendSuccess(res, users);
+  } catch (error) {
+    console.error('Get online users error:', error);
+    sendError(res, 'Failed to fetch online users', 'FETCH_ERROR', 500);
+  }
+};

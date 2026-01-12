@@ -44,3 +44,65 @@ export const findUserById = async (id: string): Promise<User | null> => {
     where: { id },
   });
 };
+
+export const findAllUsers = async (excludeUserId?: string) => {
+  return prisma.user.findMany({
+    where: excludeUserId
+      ? {
+          id: {
+            not: excludeUserId,
+          },
+        }
+      : undefined,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      picture: true,
+      isOnline: true,
+      lastSeen: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  });
+};
+
+export const findOnlineUsers = async (excludeUserId?: string) => {
+  return prisma.user.findMany({
+    where: {
+      isOnline: true,
+      ...(excludeUserId
+        ? {
+            id: {
+              not: excludeUserId,
+            },
+          }
+        : {}),
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      picture: true,
+      isOnline: true,
+      lastSeen: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  });
+};
+
+export const updateOnlineStatus = async (
+  id: string,
+  isOnline: boolean
+): Promise<User> => {
+  return prisma.user.update({
+    where: { id },
+    data: {
+      isOnline,
+      lastSeen: new Date(),
+    },
+  });
+};
