@@ -189,3 +189,56 @@ export const sharedContentApi = {
     sessionId: string;
   }) => apiClient.post('/shared/documents', data),
 };
+
+export const uploadApi = {
+  uploadFile: async (file: File): Promise<ApiResponse<{
+    url: string;
+    thumbnailUrl: string;
+    publicId: string;
+    type: 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+    format: string;
+    size: number;
+    width?: number;
+    height?: number;
+    originalName: string;
+  }>> => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data: ApiResponse = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Upload failed');
+      }
+
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        return {
+          success: false,
+          error: {
+            message: error.message,
+            code: 'UPLOAD_ERROR',
+            statusCode: 0,
+          },
+        };
+      }
+      return {
+        success: false,
+        error: {
+          message: 'Unknown error occurred',
+          code: 'UNKNOWN_ERROR',
+          statusCode: 0,
+        },
+      };
+    }
+  },
+};

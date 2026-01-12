@@ -11,6 +11,7 @@ import userRoutes from './routes/user.routes';
 import sessionRoutes from './routes/session.routes';
 import messageRoutes from './routes/message.routes';
 import sharedContentRoutes from './routes/shared-content.routes';
+import uploadRoutes from './routes/upload.routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { initializeSocket } from './socket/socket.server';
 
@@ -40,9 +41,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/shared', sharedContentRoutes);
-app.use('/api/sessions', sessionRoutes);
-app.use('/api/messages', messageRoutes);
-app.use('/api/shared', sharedContentRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

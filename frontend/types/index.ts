@@ -17,6 +17,8 @@ export interface Message {
   senderId: string;
   sender?: User;
   sessionId: string;
+  type?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'LINK';
+  status?: 'SENT' | 'DELIVERED' | 'READ';
   createdAt: Date;
   readAt?: Date;
   isRead?: boolean;

@@ -119,6 +119,7 @@ export const setupSocketHandlers = (io: SocketServer) => {
           id: message.id,
           content: message.content,
           sessionId: message.sessionId,
+          type: message.type,
           createdAt: message.createdAt.toISOString(),
         });
 

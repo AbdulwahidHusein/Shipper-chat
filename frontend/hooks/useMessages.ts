@@ -15,7 +15,7 @@ interface UseMessagesReturn {
   error: string | null;
   hasMore: boolean;
   loadMore: () => Promise<void>;
-  sendMessage: (content: string) => Promise<Message | null>;
+  sendMessage: (content: string, type?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'LINK') => Promise<Message | null>;
   markAllRead: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -48,6 +48,8 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
             createdAt: new Date(msg.createdAt),
             readAt: msg.readAt ? new Date(msg.readAt) : undefined,
             sender: msg.sender,
+            type: msg.type || 'TEXT',
+            status: msg.status || 'SENT',
           }));
 
           if (reset) {
@@ -122,7 +124,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
           const existingIndex = filtered.findIndex((msg) => 
             msg.content === data.content && 
             msg.senderId === user?.id &&
-            msg.createdAt.getTime() - new Date(data.createdAt).getTime() < 5000 // Within 5 seconds
+            Math.abs(msg.createdAt.getTime() - new Date(data.createdAt).getTime()) < 5000 // Within 5 seconds
           );
           
           if (existingIndex >= 0) {
@@ -131,6 +133,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
             updated[existingIndex] = {
               ...updated[existingIndex],
               id: data.id,
+              type: data.type || 'TEXT',
               createdAt: new Date(data.createdAt),
             };
             return updated;
@@ -145,7 +148,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
                 content: data.content,
                 senderId: user?.id || '',
                 sessionId: data.sessionId,
-                type: 'TEXT',
+                type: data.type || 'TEXT',
                 status: 'SENT',
                 createdAt: new Date(data.createdAt),
                 sender: {
@@ -194,7 +197,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
   }, [hasMore, loading, fetchMessages]);
 
   const sendMessage = useCallback(
-    async (content: string): Promise<Message | null> => {
+    async (content: string, messageType: 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'LINK' = 'TEXT'): Promise<Message | null> => {
       if (!sessionId) return null;
 
       // Use WebSocket if connected, otherwise fallback to REST
@@ -206,7 +209,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
           content,
           senderId: user?.id || '',
           sessionId,
-          type: 'TEXT',
+          type: messageType,
           status: 'SENT',
           createdAt: new Date(),
           sender: {
@@ -223,7 +226,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
         emit('message:send', {
           content,
           sessionId,
-          type: 'TEXT',
+          type: messageType,
         });
         
         // Return null - real message will come via message:sent event
@@ -234,6 +237,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
           const response = await messageApi.sendMessage({
             content,
             sessionId,
+            type: messageType,
           });
           if (response.success && response.data) {
             const newMessage = {

@@ -10,11 +10,14 @@ import { tokens } from '@/lib/design-tokens';
 import { useMessages } from '@/hooks/useMessages';
 import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
+import { uploadApi } from '@/lib/api-client';
+import { sharedContentApi } from '@/lib/api-client';
 import type { ChatSession } from '@/types';
 import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/ui/Icon';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { format } from 'date-fns';
+import Image from 'next/image';
 
 // Helper function to get other participant
 function getOtherParticipant(session: ChatSession, currentUserId: string) {
@@ -35,6 +38,15 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
   const { sessions } = useSessions();
   const { messages, loading, sendMessage: sendMessageApi, markAllRead } = useMessages(sessionId);
   const [messageInput, setMessageInput] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewFile, setPreviewFile] = useState<{
+    url: string;
+    thumbnailUrl: string;
+    type: 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+    name: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -110,12 +122,85 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
     );
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !sessionId) return;
+
+    // Validate file size
+    const maxSize = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 
+                    file.type.startsWith('image/') ? 10 * 1024 * 1024 : 
+                    25 * 1024 * 1024;
+    
+    if (file.size > maxSize) {
+      alert(`File size exceeds limit (${Math.round(maxSize / 1024 / 1024)}MB)`);
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const response = await uploadApi.uploadFile(file);
+      
+      if (response.success && response.data) {
+        const uploadData = response.data;
+        
+        // Set preview
+        setPreviewFile({
+          url: uploadData.url,
+          thumbnailUrl: uploadData.thumbnailUrl,
+          type: uploadData.type,
+          name: uploadData.originalName,
+        });
+
+        // If image or video, also save to shared media
+        if (uploadData.type === 'IMAGE' || uploadData.type === 'VIDEO') {
+          await sharedContentApi.shareMedia({
+            type: uploadData.type,
+            url: uploadData.url,
+            thumbnailUrl: uploadData.thumbnailUrl,
+            sessionId,
+          });
+        } else if (uploadData.type === 'DOCUMENT') {
+          await sharedContentApi.shareDocument({
+            name: uploadData.originalName,
+            type: uploadData.format.toUpperCase() as any,
+            size: uploadData.size,
+            url: uploadData.url,
+            sessionId,
+          });
+        }
+
+        // Send message with file URL
+        await sendMessageApi(uploadData.url, uploadData.type);
+        
+        // Clear preview and input
+        setPreviewFile(null);
+        setMessageInput('');
+      } else {
+        alert(response.error?.message || 'Upload failed');
+      }
+    } catch (error) {
+      alert('Failed to upload file');
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !sessionId) return;
     const content = messageInput.trim();
     setMessageInput('');
-    // sendMessageApi will use WebSocket if connected, otherwise REST API
     await sendMessageApi(content);
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -349,18 +434,84 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
                       : `${tokens.borderRadius.base} ${tokens.borderRadius.lg} ${tokens.borderRadius.lg} ${tokens.borderRadius.base}`
                     : tokens.borderRadius.lg, // 12px
                   maxWidth: '70%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: tokens.spacing[2],
                 }}
               >
-                <p
-                  style={{
-                    ...tokens.typography.styles.paragraphXSmall,
-                    color: isCurrentUser
-                      ? tokens.colors.text.neutral.main
-                      : tokens.colors.text.heading.primary,
-                  }}
-                >
-                  {message.content}
-                </p>
+                {/* Check if message is an image/video */}
+                {message.type === 'IMAGE' || message.type === 'VIDEO' ? (
+                  <div
+                    style={{
+                      borderRadius: tokens.borderRadius.base,
+                      overflow: 'hidden',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    {message.type === 'VIDEO' ? (
+                      <video
+                        src={message.content}
+                        controls
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '400px',
+                          borderRadius: tokens.borderRadius.base,
+                        }}
+                      />
+                    ) : (
+                      <Image
+                        src={message.content}
+                        alt="Shared image"
+                        width={400}
+                        height={300}
+                        style={{
+                          maxWidth: '100%',
+                          height: 'auto',
+                          borderRadius: tokens.borderRadius.base,
+                        }}
+                      />
+                    )}
+                  </div>
+                ) : message.type === 'FILE' ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: tokens.spacing[2],
+                      alignItems: 'center',
+                      padding: tokens.spacing[2],
+                      backgroundColor: tokens.colors.surface.weak,
+                      borderRadius: tokens.borderRadius.base,
+                    }}
+                  >
+                    <Icon name="folder" size={20} color={tokens.colors.icon.secondary} />
+                    <a
+                      href={message.content}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        ...tokens.typography.styles.paragraphXSmall,
+                        color: tokens.colors.brand[500],
+                        textDecoration: 'underline',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {message.content.split('/').pop() || 'Download file'}
+                    </a>
+                  </div>
+                ) : (
+                  <p
+                    style={{
+                      ...tokens.typography.styles.paragraphXSmall,
+                      color: isCurrentUser
+                        ? tokens.colors.text.neutral.main
+                        : tokens.colors.text.heading.primary,
+                    }}
+                  >
+                    {message.content}
+                  </p>
+                )}
               </div>
 
               {/* Timestamp and Read Receipt */}
@@ -400,6 +551,96 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
         </div>
       </div>
 
+      {/* File Preview */}
+      {previewFile && (
+        <div
+          style={{
+            padding: tokens.spacing[3],
+            borderTop: `1px solid ${tokens.colors.border.primary}`,
+            display: 'flex',
+            gap: tokens.spacing[3],
+            alignItems: 'center',
+          }}
+        >
+          {previewFile.type === 'IMAGE' ? (
+            <Image
+              src={previewFile.thumbnailUrl}
+              alt="Preview"
+              width={60}
+              height={60}
+              style={{
+                borderRadius: tokens.borderRadius.base,
+                objectFit: 'cover',
+              }}
+            />
+          ) : previewFile.type === 'VIDEO' ? (
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: tokens.borderRadius.base,
+                backgroundColor: tokens.colors.surface.weak,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="video" size={24} color={tokens.colors.icon.secondary} />
+            </div>
+          ) : (
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: tokens.borderRadius.base,
+                backgroundColor: tokens.colors.surface.weak,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="folder" size={24} color={tokens.colors.icon.secondary} />
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p
+              style={{
+                ...tokens.typography.styles.labelSmall,
+                color: tokens.colors.text.heading.primary,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {previewFile.name}
+            </p>
+            <p
+              style={{
+                ...tokens.typography.styles.paragraphXSmall,
+                color: tokens.colors.text.placeholder,
+              }}
+            >
+              {uploading ? `Uploading... ${uploadProgress}%` : 'Ready to send'}
+            </p>
+          </div>
+          <button
+            onClick={() => setPreviewFile(null)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
+              border: 'none',
+              backgroundColor: 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            <Icon name="x" size={16} color={tokens.colors.icon.secondary} />
+          </button>
+        </div>
+      )}
+
       {/* Input Area */}
       <div
         style={{
@@ -408,6 +649,15 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
           paddingTop: tokens.spacing[2], // 8px
         }}
       >
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*,.pdf,.doc,.docx"
+          onChange={handleFileSelect}
+          style={{ display: 'none' }}
+        />
+
         <div
           style={{
             display: 'flex',
@@ -450,7 +700,7 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
               alignItems: 'center',
             }}
           >
-            {['microphone', 'emoji', 'paperclip'].map((iconName) => (
+            {['microphone', 'emoji'].map((iconName) => (
               <button
                 key={iconName}
                 style={{
@@ -474,24 +724,54 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
               </button>
             ))}
             <button
+              onClick={handleAttachClick}
+              disabled={uploading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '24px',
+                height: '24px',
+                padding: '8px 10px',
+                borderRadius: tokens.borderRadius.full,
+                border: 'none',
+                backgroundColor: 'transparent',
+                cursor: uploading ? 'not-allowed' : 'pointer',
+                opacity: uploading ? 0.5 : 1,
+              }}
+            >
+              <Icon
+                name="paperclip"
+                size={14}
+                color={tokens.colors.icon.secondary}
+              />
+            </button>
+            <button
               onClick={handleSendMessage}
+              disabled={uploading || (!messageInput.trim() && !previewFile)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '32px',
                 height: '32px',
-                backgroundColor: tokens.colors.brand[500],
+                backgroundColor: uploading || (!messageInput.trim() && !previewFile)
+                  ? tokens.colors.surface.weak
+                  : tokens.colors.brand[500],
                 borderRadius: tokens.borderRadius.full,
                 border: 'none',
-                cursor: 'pointer',
+                cursor: uploading || (!messageInput.trim() && !previewFile) ? 'not-allowed' : 'pointer',
                 padding: '8px 10px',
               }}
             >
               <Icon
                 name="send"
                 size={16}
-                color={tokens.colors.text.neutral.white}
+                color={
+                  uploading || (!messageInput.trim() && !previewFile)
+                    ? tokens.colors.icon.secondary
+                    : tokens.colors.text.neutral.white
+                }
               />
             </button>
           </div>

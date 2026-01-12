@@ -59,6 +59,7 @@ export interface ServerToClientEvents {
     id: string;
     content: string;
     sessionId: string;
+    type: string;
     createdAt: string;
   }) => void;
 
