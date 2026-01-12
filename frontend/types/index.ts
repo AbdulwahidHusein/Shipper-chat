@@ -39,3 +39,32 @@ export interface UserPresence {
   isOnline: boolean;
   lastSeen: Date;
 }
+
+export interface SharedMedia {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  thumbnailUrl: string;
+  createdAt: Date;
+  sessionId: string;
+}
+
+export interface SharedLink {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+  favicon: string;
+  createdAt: Date;
+  sessionId: string;
+}
+
+export interface SharedDocument {
+  id: string;
+  name: string;
+  type: 'pdf' | 'doc' | 'docx' | 'fig' | 'ai' | 'psd' | 'xd' | 'sketch';
+  size: number; // in bytes
+  pages?: number;
+  createdAt: Date;
+  sessionId: string;
+}

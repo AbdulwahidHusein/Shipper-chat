@@ -12,13 +12,15 @@ import MessageList from '@/components/chat/MessageList';
 import ChatWindow from '@/components/chat/ChatWindow';
 import NewMessageModal from '@/components/modals/NewMessageModal';
 import ChatContextMenu from '@/components/modals/ChatContextMenu';
+import ContactInfoModal from '@/components/modals/ContactInfoModal';
 import { tokens } from '@/lib/design-tokens';
-import { mockUsers, mockSessions } from '@/data/mockData';
+import { mockUsers, mockSessions, getOtherParticipant } from '@/data/mockData';
 import type { User } from '@/types';
 
 export default function ChatPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>('session1');
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
+  const [showContactInfo, setShowContactInfo] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     position: { x: number; y: number };
@@ -52,6 +54,10 @@ export default function ChatPage() {
       // In real app, we'd create a new session
       setSelectedSessionId('session1');
     }
+  };
+
+  const handleOpenContactInfo = () => {
+    setShowContactInfo(true);
   };
 
   return (
@@ -92,6 +98,7 @@ export default function ChatPage() {
         <ChatWindow 
           sessionId={selectedSessionId}
           onOpenContextMenu={handleOpenContextMenu}
+          onOpenContactInfo={handleOpenContactInfo}
         />
       </div>
 
@@ -117,7 +124,8 @@ export default function ChatPage() {
           console.log('Mute:', contextMenu.sessionId);
         }}
         onContactInfo={() => {
-          console.log('Contact info:', contextMenu.sessionId);
+          setShowContactInfo(true);
+          setContextMenu({ ...contextMenu, isOpen: false });
         }}
         onExportChat={() => {
           console.log('Export chat:', contextMenu.sessionId);
@@ -127,6 +135,23 @@ export default function ChatPage() {
         }}
         onDeleteChat={() => {
           console.log('Delete chat:', contextMenu.sessionId);
+        }}
+      />
+
+      {/* Contact Info Modal */}
+      <ContactInfoModal
+        isOpen={showContactInfo}
+        user={selectedSessionId ? getOtherParticipant(
+          mockSessions.find((s) => s.id === selectedSessionId)!,
+          '8'
+        ) : undefined}
+        sessionId={selectedSessionId}
+        onClose={() => setShowContactInfo(false)}
+        onAudioCall={() => {
+          console.log('Audio call');
+        }}
+        onVideoCall={() => {
+          console.log('Video call');
         }}
       />
     </div>

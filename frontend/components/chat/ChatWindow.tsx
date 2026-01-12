@@ -16,9 +16,10 @@ import { format } from 'date-fns';
 interface ChatWindowProps {
   sessionId?: string;
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
+  onOpenContactInfo?: () => void;
 }
 
-export default function ChatWindow({ sessionId, onOpenContextMenu }: ChatWindowProps) {
+export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo }: ChatWindowProps) {
   const [messageInput, setMessageInput] = useState('');
 
   if (!sessionId) {
@@ -94,11 +95,21 @@ export default function ChatWindow({ sessionId, onOpenContextMenu }: ChatWindowP
           borderBottom: `1px solid ${tokens.colors.border.primary}`,
         }}
       >
-        <Avatar
-          src={otherParticipant?.picture}
-          name={otherParticipant?.name}
-          size="md"
-        />
+        <button
+          onClick={onOpenContactInfo}
+          style={{
+            border: 'none',
+            background: 'none',
+            padding: 0,
+            cursor: 'pointer',
+          }}
+        >
+          <Avatar
+            src={otherParticipant?.picture}
+            name={otherParticipant?.name}
+            size="md"
+          />
+        </button>
         <div
           style={{
             display: 'flex',

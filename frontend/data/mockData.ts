@@ -3,7 +3,7 @@
  * Matches the data structure shown in Figma
  */
 
-import { User, ChatSession, Message } from '@/types';
+import { User, ChatSession, Message, SharedMedia, SharedLink, SharedDocument } from '@/types';
 
 // Mock Users (from Figma)
 export const mockUsers: User[] = [
@@ -301,4 +301,329 @@ export function getOtherParticipant(session: ChatSession, currentUserId: string)
     return session.participant2;
   }
   return session.participant1;
+}
+
+// Mock Shared Media (for Daniel CH - session1)
+export const mockSharedMedia: SharedMedia[] = [
+  // May (7 images)
+  {
+    id: 'media1',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200',
+    createdAt: new Date(2024, 4, 28), // May
+    sessionId: 'session1',
+  },
+  {
+    id: 'media2',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=200',
+    createdAt: new Date(2024, 4, 27),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media3',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=200',
+    createdAt: new Date(2024, 4, 26),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media4',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=200',
+    createdAt: new Date(2024, 4, 25),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media5',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1557672199-6ab42ab48320?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1557672199-6ab42ab48320?w=200',
+    createdAt: new Date(2024, 4, 24),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media6',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=200',
+    createdAt: new Date(2024, 4, 23),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media7',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200',
+    createdAt: new Date(2024, 4, 22),
+    sessionId: 'session1',
+  },
+  // April (5 images)
+  {
+    id: 'media8',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1616161560417-66d4db5892ec?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1616161560417-66d4db5892ec?w=200',
+    createdAt: new Date(2024, 3, 28),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media9',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=200',
+    createdAt: new Date(2024, 3, 27),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media10',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1553356084-58ef4a67b2a7?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1553356084-58ef4a67b2a7?w=200',
+    createdAt: new Date(2024, 3, 26),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media11',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=200',
+    createdAt: new Date(2024, 3, 25),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media12',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1611173504750-7f36b9c06d5a?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1611173504750-7f36b9c06d5a?w=200',
+    createdAt: new Date(2024, 3, 24),
+    sessionId: 'session1',
+  },
+  // March (8 images)
+  {
+    id: 'media13',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=200',
+    createdAt: new Date(2024, 2, 30),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media14',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1561212044-bac5ef688a07?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1561212044-bac5ef688a07?w=200',
+    createdAt: new Date(2024, 2, 29),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media15',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=200',
+    createdAt: new Date(2024, 2, 28),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media16',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200',
+    createdAt: new Date(2024, 2, 27),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media17',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1579546929662-711aa81148cf?w=200',
+    createdAt: new Date(2024, 2, 26),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media18',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1618005198919-d3d4b5a92ead?w=200',
+    createdAt: new Date(2024, 2, 25),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media19',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1620121478247-ec786b9be2fa?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1620121478247-ec786b9be2fa?w=200',
+    createdAt: new Date(2024, 2, 24),
+    sessionId: 'session1',
+  },
+  {
+    id: 'media20',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=400',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1614732414444-096e5f1122d5?w=200',
+    createdAt: new Date(2024, 2, 23),
+    sessionId: 'session1',
+  },
+];
+
+// Helper function to get shared media for a session
+export function getSharedMediaForSession(sessionId: string): SharedMedia[] {
+  return mockSharedMedia.filter((media) => media.sessionId === sessionId);
+}
+
+// Helper function to group media by month
+export function groupMediaByMonth(media: SharedMedia[]): { month: string; items: SharedMedia[] }[] {
+  const grouped = media.reduce((acc, item) => {
+    const monthKey = item.createdAt.toLocaleString('default', { month: 'long' });
+    if (!acc[monthKey]) {
+      acc[monthKey] = [];
+    }
+    acc[monthKey].push(item);
+    return acc;
+  }, {} as Record<string, SharedMedia[]>);
+
+  // Sort by most recent first
+  return Object.entries(grouped)
+    .map(([month, items]) => ({ month, items }))
+    .sort((a, b) => b.items[0].createdAt.getTime() - a.items[0].createdAt.getTime());
+}
+
+// Mock Shared Links (for session1)
+export const mockSharedLinks: SharedLink[] = [
+  {
+    id: 'link1',
+    url: 'https://basecamp.net/',
+    title: 'Basecamp',
+    description: 'Discover thousands of premium UI kits, templates, and design resources tailored for designers, developers, and...',
+    favicon: 'https://logo.clearbit.com/basecamp.com',
+    createdAt: new Date(2024, 4, 15),
+    sessionId: 'session1',
+  },
+  {
+    id: 'link2',
+    url: 'https://notion.com/',
+    title: 'Notion',
+    description: "A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team.",
+    favicon: 'https://logo.clearbit.com/notion.so',
+    createdAt: new Date(2024, 4, 10),
+    sessionId: 'session1',
+  },
+  {
+    id: 'link3',
+    url: 'https://asana.com/',
+    title: 'Asana',
+    description: 'Work anytime, anywhere with Asana. Keep remote and distributed teams, and your entire organization, focused...',
+    favicon: 'https://logo.clearbit.com/asana.com',
+    createdAt: new Date(2024, 4, 8),
+    sessionId: 'session1',
+  },
+  {
+    id: 'link4',
+    url: 'https://trello.com/',
+    title: 'Trello',
+    description: 'Make the impossible, possible with Trello. The ultimate teamwork project management tool. Start up board in se...',
+    favicon: 'https://logo.clearbit.com/trello.com',
+    createdAt: new Date(2024, 4, 5),
+    sessionId: 'session1',
+  },
+];
+
+// Mock Shared Documents (for session1)
+export const mockSharedDocuments: SharedDocument[] = [
+  {
+    id: 'doc1',
+    name: 'Document Requirement.pdf',
+    type: 'pdf',
+    size: 16 * 1024 * 1024, // 16 MB
+    pages: 10,
+    createdAt: new Date(2024, 4, 20),
+    sessionId: 'session1',
+  },
+  {
+    id: 'doc2',
+    name: 'User Flow.pdf',
+    type: 'pdf',
+    size: 32 * 1024 * 1024, // 32 MB
+    pages: 7,
+    createdAt: new Date(2024, 4, 18),
+    sessionId: 'session1',
+  },
+  {
+    id: 'doc3',
+    name: 'Existing App.fig',
+    type: 'fig',
+    size: 213 * 1024 * 1024, // 213 MB
+    createdAt: new Date(2024, 4, 15),
+    sessionId: 'session1',
+  },
+  {
+    id: 'doc4',
+    name: 'Product Illustrations.ai',
+    type: 'ai',
+    size: 72 * 1024 * 1024, // 72 MB
+    createdAt: new Date(2024, 4, 12),
+    sessionId: 'session1',
+  },
+  {
+    id: 'doc5',
+    name: 'Quotation-Hikariworks-May.pdf',
+    type: 'pdf',
+    size: 329 * 1024, // 329 KB
+    pages: 2,
+    createdAt: new Date(2024, 4, 10),
+    sessionId: 'session1',
+  },
+];
+
+// Helper function to get shared links for a session
+export function getSharedLinksForSession(sessionId: string): SharedLink[] {
+  return mockSharedLinks.filter((link) => link.sessionId === sessionId);
+}
+
+// Helper function to get shared documents for a session
+export function getSharedDocumentsForSession(sessionId: string): SharedDocument[] {
+  return mockSharedDocuments.filter((doc) => doc.sessionId === sessionId);
+}
+
+// Helper function to group links by month
+export function groupLinksByMonth(links: SharedLink[]): { month: string; items: SharedLink[] }[] {
+  const grouped = links.reduce((acc, item) => {
+    const monthKey = item.createdAt.toLocaleString('default', { month: 'long' });
+    if (!acc[monthKey]) {
+      acc[monthKey] = [];
+    }
+    acc[monthKey].push(item);
+    return acc;
+  }, {} as Record<string, SharedLink[]>);
+
+  return Object.entries(grouped)
+    .map(([month, items]) => ({ month, items }))
+    .sort((a, b) => b.items[0].createdAt.getTime() - a.items[0].createdAt.getTime());
+}
+
+// Helper function to group documents by month
+export function groupDocumentsByMonth(documents: SharedDocument[]): { month: string; items: SharedDocument[] }[] {
+  const grouped = documents.reduce((acc, item) => {
+    const monthKey = item.createdAt.toLocaleString('default', { month: 'long' });
+    if (!acc[monthKey]) {
+      acc[monthKey] = [];
+    }
+    acc[monthKey].push(item);
+    return acc;
+  }, {} as Record<string, SharedDocument[]>);
+
+  return Object.entries(grouped)
+    .map(([month, items]) => ({ month, items }))
+    .sort((a, b) => b.items[0].createdAt.getTime() - a.items[0].createdAt.getTime());
+}
+
+// Helper function to format file size
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(0) + ' MB';
 }
