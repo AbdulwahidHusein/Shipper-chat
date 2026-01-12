@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -11,6 +12,7 @@ import sessionRoutes from './routes/session.routes';
 import messageRoutes from './routes/message.routes';
 import sharedContentRoutes from './routes/shared-content.routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import { initializeSocket } from './socket/socket.server';
 
 // Load environment variables
 dotenv.config();
@@ -51,9 +53,16 @@ app.get('/health', (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+// Create HTTP server from Express app
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+initializeSocket(httpServer, FRONTEND_URL);
+
 // Start server
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
   console.log(`🔐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔌 WebSocket server ready`);
 });

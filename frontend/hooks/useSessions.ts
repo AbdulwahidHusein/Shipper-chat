@@ -1,10 +1,11 @@
 /**
  * useSessions Hook
- * Clean, professional session data management
+ * Clean, professional session data management with WebSocket support
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { sessionApi } from '@/lib/api-client';
+import { useSocket } from './useSocket';
 import type { ChatSession } from '@/types';
 
 interface UseSessionsReturn {
@@ -25,6 +26,7 @@ export function useSessions(includeArchived: boolean = false): UseSessionsReturn
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isConnected, on } = useSocket();
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -63,6 +65,60 @@ export function useSessions(includeArchived: boolean = false): UseSessionsReturn
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  // WebSocket event listeners for session updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Listen for session updates
+    const handleSessionUpdate = (data: any) => {
+      setSessions((prev) =>
+        prev.map((session) =>
+          session.id === data.id
+            ? {
+                ...session,
+                lastMessageId: data.lastMessageId,
+                unreadCount: data.unreadCount,
+                updatedAt: new Date(data.updatedAt),
+              }
+            : session
+        )
+      );
+    };
+
+    // Listen for new sessions
+    const handleSessionNew = (data: any) => {
+      const newSession: ChatSession = {
+        id: data.id,
+        participant1Id: data.participant1Id,
+        participant2Id: data.participant2Id,
+        type: data.type,
+        isArchived: false,
+        isMuted: false,
+        unreadCount: 0,
+        lastMessageId: null,
+        participant1: data.participant1,
+        participant2: data.participant2,
+        createdAt: new Date(data.createdAt),
+        updatedAt: new Date(data.createdAt),
+      };
+      setSessions((prev) => {
+        // Avoid duplicates
+        if (prev.some((s) => s.id === newSession.id)) {
+          return prev;
+        }
+        return [...prev, newSession];
+      });
+    };
+
+    const unsubscribeUpdate = on('session:update', handleSessionUpdate);
+    const unsubscribeNew = on('session:new', handleSessionNew);
+
+    return () => {
+      unsubscribeUpdate();
+      unsubscribeNew();
+    };
+  }, [isConnected, on]);
 
   const createSession = useCallback(
     async (participant2Id: string): Promise<ChatSession | null> => {

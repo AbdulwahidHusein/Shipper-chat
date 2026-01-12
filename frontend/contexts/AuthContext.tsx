@@ -8,6 +8,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '@/lib/api-client';
+import { socketClient } from '@/lib/socket-client';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -55,6 +56,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Connect WebSocket when user is authenticated
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        // Small delay to ensure cookie is available and REST API has confirmed auth
+        setTimeout(() => {
+          socketClient.connect();
+        }, 500);
+      } else {
+        socketClient.disconnect();
+      }
+    }
+  }, [user, loading]);
+
   const login = () => {
     const authUrl = authApi.getGoogleAuthUrl();
     window.location.href = authUrl;
@@ -62,12 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Disconnect WebSocket first
+      socketClient.disconnect();
       await authApi.logout();
       setUser(null);
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
       // Still clear user state even if API call fails
+      socketClient.disconnect();
       setUser(null);
       router.push('/login');
     }

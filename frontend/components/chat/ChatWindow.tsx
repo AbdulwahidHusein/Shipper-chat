@@ -114,6 +114,7 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
     if (!messageInput.trim() || !sessionId) return;
     const content = messageInput.trim();
     setMessageInput('');
+    // sendMessageApi will use WebSocket if connected, otherwise REST API
     await sendMessageApi(content);
   };
 

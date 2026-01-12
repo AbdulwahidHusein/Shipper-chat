@@ -1,10 +1,12 @@
 /**
  * useMessages Hook
- * Clean, professional message data management
+ * Clean, professional message data management with WebSocket support
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { messageApi } from '@/lib/api-client';
+import { useSocket } from './useSocket';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Message } from '@/types';
 
 interface UseMessagesReturn {
@@ -24,6 +26,9 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const { isConnected, emit, on, off } = useSocket();
+  const { user } = useAuth();
+  const sessionIdRef = useRef(sessionId);
 
   const fetchMessages = useCallback(
     async (reset: boolean = false) => {
@@ -65,12 +70,123 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
     [sessionId, cursor]
   );
 
+  // Update ref when sessionId changes
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  // Fetch messages when session changes
   useEffect(() => {
     setMessages([]);
     setCursor(undefined);
     setHasMore(true);
     fetchMessages(true);
-  }, [sessionId]);
+  }, [sessionId, fetchMessages]);
+
+  // WebSocket event listeners
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Listen for new messages (only from other users, not our own)
+    const handleNewMessage = (data: any) => {
+      // Only add if it's for the current session AND not from current user
+      if (data.sessionId === sessionIdRef.current && data.senderId !== user?.id) {
+        const newMessage: Message = {
+          id: data.id,
+          content: data.content,
+          senderId: data.senderId,
+          sessionId: data.sessionId,
+          type: data.type,
+          status: data.status,
+          createdAt: new Date(data.createdAt),
+          sender: data.sender,
+        };
+        setMessages((prev) => {
+          // Avoid duplicates
+          if (prev.some((m) => m.id === newMessage.id)) {
+            return prev;
+          }
+          return [...prev, newMessage];
+        });
+      }
+    };
+
+    // Listen for message sent confirmation (only for our own messages)
+    const handleMessageSent = (data: any) => {
+      if (data.sessionId === sessionIdRef.current) {
+        // Replace optimistic message with real message from server
+        setMessages((prev) => {
+          // Remove optimistic message (temp-* id)
+          const filtered = prev.filter((msg) => !msg.id.startsWith('temp-'));
+          // Update the message with real ID and keep it on the right (sender's side)
+          const existingIndex = filtered.findIndex((msg) => 
+            msg.content === data.content && 
+            msg.senderId === user?.id &&
+            msg.createdAt.getTime() - new Date(data.createdAt).getTime() < 5000 // Within 5 seconds
+          );
+          
+          if (existingIndex >= 0) {
+            // Update existing message with real ID
+            const updated = [...filtered];
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              id: data.id,
+              createdAt: new Date(data.createdAt),
+            };
+            return updated;
+          }
+          
+          // If not found, add it (shouldn't happen, but safety check)
+          if (!filtered.some((msg) => msg.id === data.id)) {
+            return [
+              ...filtered,
+              {
+                id: data.id,
+                content: data.content,
+                senderId: user?.id || '',
+                sessionId: data.sessionId,
+                type: 'TEXT',
+                status: 'SENT',
+                createdAt: new Date(data.createdAt),
+                sender: {
+                  id: user?.id || '',
+                  name: user?.name || '',
+                  picture: user?.picture || null,
+                },
+              },
+            ];
+          }
+          return filtered;
+        });
+      }
+    };
+
+    // Listen for message status updates
+    const handleMessageStatus = (data: any) => {
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === data.messageId) {
+            return {
+              ...msg,
+              status: data.status,
+              readAt: data.readAt ? new Date(data.readAt) : msg.readAt,
+            };
+          }
+          return msg;
+        })
+      );
+    };
+
+    const unsubscribeNew = on('message:new', handleNewMessage);
+    const unsubscribeSent = on('message:sent', handleMessageSent);
+    const unsubscribeStatus = on('message:status', handleMessageStatus);
+
+    return () => {
+      unsubscribeNew();
+      unsubscribeSent();
+      unsubscribeStatus();
+    };
+  }, [isConnected, on, sessionId, user?.id]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loading) return;
@@ -81,27 +197,60 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
     async (content: string): Promise<Message | null> => {
       if (!sessionId) return null;
 
-      try {
-        const response = await messageApi.sendMessage({
+      // Use WebSocket if connected, otherwise fallback to REST
+      if (isConnected) {
+        // Create optimistic message
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMessage: Message = {
+          id: tempId,
+          content,
+          senderId: user?.id || '',
+          sessionId,
+          type: 'TEXT',
+          status: 'SENT',
+          createdAt: new Date(),
+          sender: {
+            id: user?.id || '',
+            name: user?.name || '',
+            picture: user?.picture || null,
+          },
+        };
+        
+        // Add optimistic message immediately
+        setMessages((prev) => [...prev, optimisticMessage]);
+        
+        // Send via WebSocket
+        emit('message:send', {
           content,
           sessionId,
+          type: 'TEXT',
         });
-        if (response.success && response.data) {
-          const newMessage = {
-            ...response.data,
-            createdAt: new Date(response.data.createdAt),
-            sender: response.data.sender,
-          };
-          setMessages((prev) => [...prev, newMessage]);
-          return newMessage as Message;
-        }
+        
+        // Return null - real message will come via message:sent event
+        return null;
+      } else {
+        // Fallback to REST API
+        try {
+          const response = await messageApi.sendMessage({
+            content,
+            sessionId,
+          });
+          if (response.success && response.data) {
+            const newMessage = {
+              ...response.data,
+              createdAt: new Date(response.data.createdAt),
+              sender: response.data.sender,
+            };
+            setMessages((prev) => [...prev, newMessage]);
+            return newMessage as Message;
+          }
         return null;
       } catch (err) {
-        console.error('Send message error:', err);
         return null;
       }
+      }
     },
-    [sessionId]
+    [sessionId, isConnected, emit, user]
   );
 
   const markAllRead = useCallback(async () => {
@@ -118,7 +267,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
         }))
       );
     } catch (err) {
-      console.error('Mark all read error:', err);
+      // Silent error handling
     }
   }, [sessionId]);
 

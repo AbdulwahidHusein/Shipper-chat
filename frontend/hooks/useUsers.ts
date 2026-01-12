@@ -1,10 +1,11 @@
 /**
  * useUsers Hook
- * Clean, professional user list management
+ * Clean, professional user list management with WebSocket support
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { userApi } from '@/lib/api-client';
+import { useSocket } from './useSocket';
 import type { User } from '@/types';
 
 interface UseUsersReturn {
@@ -20,6 +21,7 @@ export function useUsers(): UseUsersReturn {
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { isConnected, on } = useSocket();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -56,6 +58,37 @@ export function useUsers(): UseUsersReturn {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // WebSocket event listeners for presence updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handlePresenceUpdate = (data: any) => {
+      const updateUserPresence = (userList: User[]) =>
+        userList.map((user) =>
+          user.id === data.userId
+            ? {
+                ...user,
+                isOnline: data.isOnline,
+                lastSeen: new Date(data.lastSeen),
+              }
+            : user
+        );
+
+      setUsers(updateUserPresence);
+      setOnlineUsers((prev) => {
+        const updated = updateUserPresence(prev);
+        // Filter to only online users
+        return updated.filter((u) => u.isOnline);
+      });
+    };
+
+    const unsubscribe = on('presence:update', handlePresenceUpdate);
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isConnected, on]);
 
   return {
     users,
