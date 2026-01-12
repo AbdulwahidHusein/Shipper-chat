@@ -126,6 +126,9 @@ export const setupSocketHandlers = (io: SocketServer) => {
         // Fetch updated session to get latest unreadCount and lastMessageId
         const updatedSession = await findSessionById(data.sessionId);
 
+        // Join session room for typing indicators
+        socket.join(getSessionRoom(data.sessionId));
+
         // Emit to recipient ONLY (not to sender - sender already has optimistic update)
         const recipientRoom = getUserRoom(recipientId);
         io.to(recipientRoom).emit('message:new', {
@@ -264,6 +267,46 @@ export const setupSocketHandlers = (io: SocketServer) => {
           userId,
           isOnline: false,
           lastSeen: new Date().toISOString(),
+        });
+      } catch (error) {
+        // Silent error handling
+      }
+    });
+
+    // ============================================
+    // TYPING EVENTS
+    // ============================================
+
+    /**
+     * Handle typing start
+     */
+    socket.on('typing:start', (data) => {
+      try {
+        // Join session room if not already joined
+        socket.join(getSessionRoom(data.sessionId));
+        
+        // Emit to other participants in the session (not to sender)
+        const sessionRoom = getSessionRoom(data.sessionId);
+        socket.to(sessionRoom).emit('typing:start', {
+          sessionId: data.sessionId,
+          userId,
+          userName: user.name,
+        });
+      } catch (error) {
+        // Silent error handling
+      }
+    });
+
+    /**
+     * Handle typing stop
+     */
+    socket.on('typing:stop', (data) => {
+      try {
+        // Emit to other participants in the session (not to sender)
+        const sessionRoom = getSessionRoom(data.sessionId);
+        socket.to(sessionRoom).emit('typing:stop', {
+          sessionId: data.sessionId,
+          userId,
         });
       } catch (error) {
         // Silent error handling

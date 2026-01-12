@@ -111,6 +111,17 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
           }
           return [...prev, newMessage];
         });
+
+        // Show notification if page is not visible
+        if ('Notification' in window && Notification.permission === 'granted') {
+          if (document.hidden) {
+            new Notification(data.sender?.name || 'New message', {
+              body: data.content,
+              icon: data.sender?.picture || '/favicon.ico',
+              tag: data.id,
+            });
+          }
+        }
       }
     };
 
@@ -182,14 +193,42 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
       );
     };
 
+    // Listen for message updates (edits)
+    const handleMessageUpdate = (data: any) => {
+      if (data.sessionId === sessionIdRef.current) {
+        setMessages((prev) =>
+          prev.map((msg) => {
+            if (msg.id === data.id) {
+              return {
+                ...msg,
+                content: data.content,
+              };
+            }
+            return msg;
+          })
+        );
+      }
+    };
+
+    // Listen for message deletions
+    const handleMessageDelete = (data: any) => {
+      if (data.sessionId === sessionIdRef.current) {
+        setMessages((prev) => prev.filter((msg) => msg.id !== data.messageId));
+      }
+    };
+
     const unsubscribeNew = on('message:new', handleNewMessage);
     const unsubscribeSent = on('message:sent', handleMessageSent);
     const unsubscribeStatus = on('message:status', handleMessageStatus);
+    const unsubscribeUpdate = on('message:update', handleMessageUpdate);
+    const unsubscribeDelete = on('message:delete', handleMessageDelete);
 
     return () => {
       unsubscribeNew();
       unsubscribeSent();
       unsubscribeStatus();
+      unsubscribeUpdate();
+      unsubscribeDelete();
     };
   }, [isConnected, on, sessionId, user?.id]);
 

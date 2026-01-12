@@ -15,6 +15,7 @@ import {
   deleteMessage,
   clearSessionMessages,
 } from '../services/message.service';
+import { findSessionById } from '../services/session.service';
 import { sendSuccess, sendError } from '../utils/responses';
 import { getSocketIO } from '../socket/socket.server';
 
@@ -133,6 +134,17 @@ export const editMessage = async (req: Request, res: Response): Promise<void> =>
 
     const message = await updateMessage(id, validation.data, req.user.id);
 
+    // Emit real-time update via WebSocket
+    const io = getSocketIO();
+    if (io && message) {
+      // Emit to all participants in the session
+      io.to(`session:${message.sessionId}`).emit('message:update', {
+        id: message.id,
+        content: message.content,
+        sessionId: message.sessionId,
+      });
+    }
+
     sendSuccess(res, message, 'Message updated');
   } catch (error: any) {
     if (error.message === 'Message not found') {
@@ -223,9 +235,27 @@ export const deleteMessageHandler = async (
     }
 
     const { id } = req.params;
-    const message = await deleteMessage(id, req.user.id);
+    
+    // Get message before deleting to get sessionId
+    const message = await findMessageById(id);
+    if (!message) {
+      sendError(res, 'Message not found', 'NOT_FOUND', 404);
+      return;
+    }
 
-    sendSuccess(res, message, 'Message deleted');
+    await deleteMessage(id, req.user.id);
+
+    // Emit real-time delete via WebSocket
+    const io = getSocketIO();
+    if (io) {
+      // Emit to all participants in the session
+      io.to(`session:${message.sessionId}`).emit('message:delete', {
+        messageId: id,
+        sessionId: message.sessionId,
+      });
+    }
+
+    sendSuccess(res, null, 'Message deleted');
   } catch (error: any) {
     if (error.message === 'Message not found') {
       sendError(res, error.message, 'NOT_FOUND', 404);

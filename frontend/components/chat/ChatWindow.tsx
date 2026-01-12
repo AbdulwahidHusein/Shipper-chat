@@ -5,13 +5,33 @@
 
 'use client';
 
+// Add typing animation styles
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes typing {
+      0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.7;
+      }
+      30% {
+        transform: translateY(-10px);
+        opacity: 1;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 import { useState, useEffect, useRef } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import { useMessages } from '@/hooks/useMessages';
 import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocket } from '@/hooks/useSocket';
 import { uploadApi } from '@/lib/api-client';
 import { sharedContentApi } from '@/lib/api-client';
+import { messageApi } from '@/lib/api-client';
 import type { ChatSession } from '@/types';
 import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/ui/Icon';
@@ -36,7 +56,7 @@ interface ChatWindowProps {
 export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo }: ChatWindowProps) {
   const { user } = useAuth();
   const { sessions } = useSessions();
-  const { messages, loading, sendMessage: sendMessageApi, markAllRead, markMessageAsRead } = useMessages(sessionId);
+  const { messages, loading, sendMessage: sendMessageApi, markAllRead, markMessageAsRead, refresh: refreshMessages } = useMessages(sessionId);
   const [messageInput, setMessageInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -51,6 +71,11 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const readMessagesSet = useRef<Set<string>>(new Set());
+  const { isConnected, emit, on } = useSocket();
+  const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map()); // userId -> userName
+  const typingTimeoutsMap = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
 
   // Scroll to bottom when messages change - only scroll the message container, not the page
   useEffect(() => {
@@ -118,6 +143,101 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
       observer.disconnect();
     };
   }, [messages, sessionId, user, markMessageAsRead]);
+
+  // Typing detection
+  useEffect(() => {
+    if (!sessionId || !isConnected) return;
+
+    const handleTypingStart = (data: any) => {
+      if (data.sessionId === sessionId && data.userId !== user?.id) {
+        setTypingUsers((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(data.userId, data.userName);
+          return newMap;
+        });
+        
+        // Clear existing timeout
+        const existingTimeout = typingTimeoutsMap.current.get(data.userId);
+        if (existingTimeout) {
+          clearTimeout(existingTimeout);
+        }
+        
+        // Auto-stop typing after 3 seconds
+        const timeout = setTimeout(() => {
+          setTypingUsers((prev) => {
+            const newMap = new Map(prev);
+            newMap.delete(data.userId);
+            return newMap;
+          });
+          typingTimeoutsMap.current.delete(data.userId);
+        }, 3000);
+        
+        typingTimeoutsMap.current.set(data.userId, timeout);
+      }
+    };
+
+    const handleTypingStop = (data: any) => {
+      if (data.sessionId === sessionId && data.userId !== user?.id) {
+        setTypingUsers((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(data.userId);
+          return newMap;
+        });
+        
+        const timeout = typingTimeoutsMap.current.get(data.userId);
+        if (timeout) {
+          clearTimeout(timeout);
+          typingTimeoutsMap.current.delete(data.userId);
+        }
+      }
+    };
+
+    const unsubscribeStart = on('typing:start', handleTypingStart);
+    const unsubscribeStop = on('typing:stop', handleTypingStop);
+
+    return () => {
+      unsubscribeStart();
+      unsubscribeStop();
+      // Clear all timeouts
+      typingTimeoutsMap.current.forEach((timeout) => clearTimeout(timeout));
+      typingTimeoutsMap.current.clear();
+    };
+  }, [sessionId, isConnected, user?.id, on]);
+
+  // Typing detection on input change
+  useEffect(() => {
+    if (!sessionId || !isConnected || !messageInput.trim()) {
+      // Stop typing if input is empty
+      if (sessionId && isConnected) {
+        emit('typing:stop', { sessionId });
+      }
+      return;
+    }
+
+    // Emit typing start
+    emit('typing:start', { sessionId });
+
+    // Stop typing after 2 seconds of no input
+    const timeout = setTimeout(() => {
+      if (isConnected) {
+        emit('typing:stop', { sessionId });
+      }
+    }, 2000);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [messageInput, sessionId, isConnected, emit]);
+
+  // Notifications setup
+  useEffect(() => {
+    if (!user) return;
+
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, [user]);
 
   if (!sessionId) {
     return (
@@ -226,8 +346,9 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
           });
         }
 
-        // Send message with file URL
-        await sendMessageApi(uploadData.url, uploadData.type);
+        // Send message with file URL (convert DOCUMENT to FILE for message type)
+        const messageType: 'IMAGE' | 'VIDEO' | 'FILE' = uploadData.type === 'DOCUMENT' ? 'FILE' : uploadData.type;
+        await sendMessageApi(uploadData.url, messageType);
         
         // Clear preview and input
         setPreviewFile(null);
@@ -249,9 +370,49 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
 
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !sessionId) return;
+    
+    // Stop typing
+    if (isConnected) {
+      emit('typing:stop', { sessionId });
+    }
+    
     const content = messageInput.trim();
     setMessageInput('');
     await sendMessageApi(content);
+  };
+
+  const handleEditMessage = async (messageId: string, currentContent: string) => {
+    setEditingMessageId(messageId);
+    setEditContent(currentContent);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessageId || !editContent.trim()) return;
+    
+    try {
+      await messageApi.editMessage(editingMessageId, { content: editContent.trim() });
+      setEditingMessageId(null);
+      setEditContent('');
+      // Message will be updated via WebSocket event
+    } catch (error) {
+      alert('Failed to edit message');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditContent('');
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm('Are you sure you want to delete this message?')) return;
+    
+    try {
+      await messageApi.deleteMessage(messageId);
+      // Message will be removed via WebSocket event
+    } catch (error) {
+      alert('Failed to delete message');
+    }
   };
 
   const handleAttachClick = () => {
@@ -500,6 +661,15 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
                   display: 'flex',
                   flexDirection: 'column',
                   gap: tokens.spacing[2],
+                  position: 'relative',
+                }}
+                onMouseEnter={(e) => {
+                  const actions = e.currentTarget.querySelector('.message-actions') as HTMLElement;
+                  if (actions) actions.style.opacity = '1';
+                }}
+                onMouseLeave={(e) => {
+                  const actions = e.currentTarget.querySelector('.message-actions') as HTMLElement;
+                  if (actions) actions.style.opacity = '0';
                 }}
               >
                 {/* Check if message is an image/video */}
@@ -563,17 +733,151 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
                       {message.content.split('/').pop() || 'Download file'}
                     </a>
                   </div>
-                ) : (
-                  <p
+                ) : editingMessageId === message.id ? (
+                  // Edit mode
+                  <div
                     style={{
-                      ...tokens.typography.styles.paragraphXSmall,
-                      color: isCurrentUser
-                        ? tokens.colors.text.neutral.main
-                        : tokens.colors.text.heading.primary,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: tokens.spacing[2],
                     }}
                   >
-                    {message.content}
-                  </p>
+                    <input
+                      type="text"
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveEdit();
+                        } else if (e.key === 'Escape') {
+                          handleCancelEdit();
+                        }
+                      }}
+                      autoFocus
+                      style={{
+                        border: `1px solid ${tokens.colors.border.primary}`,
+                        borderRadius: tokens.borderRadius.base,
+                        padding: tokens.spacing[2],
+                        ...tokens.typography.styles.paragraphXSmall,
+                        color: tokens.colors.text.heading.primary,
+                        backgroundColor: tokens.colors.surface.default,
+                        outline: 'none',
+                      }}
+                    />
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: tokens.spacing[2],
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      <button
+                        onClick={handleCancelEdit}
+                        style={{
+                          padding: `${tokens.spacing[1]} ${tokens.spacing[2]}`,
+                          border: `1px solid ${tokens.colors.border.primary}`,
+                          borderRadius: tokens.borderRadius.base,
+                          backgroundColor: 'transparent',
+                          cursor: 'pointer',
+                          ...tokens.typography.styles.labelSmall,
+                          color: tokens.colors.text.heading.primary,
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        style={{
+                          padding: `${tokens.spacing[1]} ${tokens.spacing[2]}`,
+                          border: 'none',
+                          borderRadius: tokens.borderRadius.base,
+                          backgroundColor: tokens.colors.brand[500],
+                          cursor: 'pointer',
+                          ...tokens.typography.styles.labelSmall,
+                          color: tokens.colors.text.neutral.white,
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: tokens.spacing[2],
+                    }}
+                  >
+                    <p
+                      style={{
+                        ...tokens.typography.styles.paragraphXSmall,
+                        color: isCurrentUser
+                          ? tokens.colors.text.neutral.main
+                          : tokens.colors.text.heading.primary,
+                      }}
+                    >
+                      {message.content}
+                    </p>
+                    {isCurrentUser && (
+                      <div
+                        className="message-actions"
+                        style={{
+                          display: 'flex',
+                          gap: tokens.spacing[1],
+                          opacity: 0,
+                          transition: 'opacity 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.opacity = '1';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = '0';
+                        }}
+                      >
+                        <button
+                          onClick={() => handleEditMessage(message.id, message.content)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '20px',
+                            height: '20px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        >
+                          <Icon
+                            name="edit"
+                            size={14}
+                            color={tokens.colors.icon.secondary}
+                          />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMessage(message.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '20px',
+                            height: '20px',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        >
+                          <Icon
+                            name="trash"
+                            size={14}
+                            color={tokens.colors.icon.secondary}
+                          />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -632,7 +936,65 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
               )}
             </div>
           );
-        })}
+        }          )}
+
+          {/* Typing Indicator */}
+          {typingUsers.size > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: tokens.spacing[2],
+                padding: tokens.spacing[2],
+                paddingLeft: tokens.spacing[4],
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '4px',
+                  alignItems: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: tokens.colors.brand[500],
+                    animation: 'typing 1.4s infinite',
+                  }}
+                />
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: tokens.colors.brand[500],
+                    animation: 'typing 1.4s infinite 0.2s',
+                  }}
+                />
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: tokens.colors.brand[500],
+                    animation: 'typing 1.4s infinite 0.4s',
+                  }}
+                />
+              </div>
+              <p
+                style={{
+                  ...tokens.typography.styles.paragraphXSmall,
+                  color: tokens.colors.text.placeholder,
+                  fontStyle: 'italic',
+                }}
+              >
+                {Array.from(typingUsers.values()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+              </p>
+            </div>
+          )}
 
           {/* Scroll anchor */}
           <div ref={messagesEndRef} style={{ flexShrink: 0 }} />
@@ -755,7 +1117,8 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
             height: '40px',
             paddingLeft: tokens.spacing[4], // 16px
             paddingRight: '4px',
-            paddingY: tokens.spacing[3], // 12px
+            paddingTop: tokens.spacing[3], // 12px
+            paddingBottom: tokens.spacing[3], // 12px
             border: `1px solid ${tokens.colors.border.primary}`,
             borderRadius: tokens.borderRadius.full, // 100px
             backgroundColor: tokens.colors.surface.default,

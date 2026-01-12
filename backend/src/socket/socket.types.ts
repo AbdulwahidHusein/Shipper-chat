@@ -70,6 +70,29 @@ export interface ServerToClientEvents {
     readAt?: string;
   }) => void;
 
+  'message:update': (data: {
+    id: string;
+    content: string;
+    sessionId: string;
+  }) => void;
+
+  'message:delete': (data: {
+    messageId: string;
+    sessionId: string;
+  }) => void;
+
+  // Typing events
+  'typing:start': (data: {
+    sessionId: string;
+    userId: string;
+    userName: string;
+  }) => void;
+
+  'typing:stop': (data: {
+    sessionId: string;
+    userId: string;
+  }) => void;
+
   // Session events
   'session:update': (data: {
     id: string;
