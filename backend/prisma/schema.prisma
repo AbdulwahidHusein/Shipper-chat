@@ -10,6 +10,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// ENUMS
+// ============================================
+
+enum SessionType {
+  DIRECT
+  GROUP
+  AI
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  LINK
+}
+
+enum MessageStatus {
+  SENT      // Message sent, not yet delivered
+  DELIVERED // Message delivered to recipient
+  READ      // Message read by recipient
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum DocumentType {
+  PDF
+  DOC
+  DOCX
+  FIG
+  AI
+  PSD
+  XD
+  SKETCH
+}
+
+// ============================================
+// MODELS
+// ============================================
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -21,6 +65,121 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  sentMessages     Message[]      @relation("MessageSender")
+  sessionsAsP1    ChatSession[]  @relation("Participant1")
+  sessionsAsP2    ChatSession[]  @relation("Participant2")
+  sharedMedia      SharedMedia[]
+  sharedLinks      SharedLink[]
+  sharedDocuments  SharedDocument[]
+
   @@index([email])
   @@index([googleId])
+  @@index([isOnline])
+}
+
+model ChatSession {
+  id            String   @id @default(cuid())
+  participant1Id String
+  participant2Id String
+  type          SessionType @default(DIRECT)
+  isArchived    Boolean  @default(false)
+  isMuted       Boolean  @default(false)
+  unreadCount   Int      @default(0)
+  lastMessageId String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  participant1  User     @relation("Participant1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2  User     @relation("Participant2", fields: [participant2Id], references: [id], onDelete: Cascade)
+  lastMessage   Message? @relation("SessionLastMessage", fields: [lastMessageId], references: [id])
+  messages      Message[]
+  sharedMedia   SharedMedia[]
+  sharedLinks   SharedLink[]
+  sharedDocuments SharedDocument[]
+
+  @@unique([participant1Id, participant2Id])
+  @@index([participant1Id])
+  @@index([participant2Id])
+  @@index([isArchived])
+  @@index([updatedAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  senderId  String
+  sessionId String
+  type      MessageType @default(TEXT)
+  status    MessageStatus @default(SENT)
+  readAt    DateTime?
+  editedAt  DateTime?
+  deletedAt DateTime? // Soft delete
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sender     User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  lastMessageFor ChatSession? @relation("SessionLastMessage")
+
+  @@index([sessionId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model SharedMedia {
+  id          String   @id @default(cuid())
+  type        MediaType
+  url         String
+  thumbnailUrl String
+  sessionId   String
+  uploadedById String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model SharedLink {
+  id          String   @id @default(cuid())
+  url         String
+  title       String
+  description String?
+  favicon     String?
+  sessionId   String
+  sharedById  String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sharedBy     User        @relation(fields: [sharedById], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model SharedDocument {
+  id          String   @id @default(cuid())
+  name        String
+  type        DocumentType
+  size        Int      // in bytes
+  pages       Int?
+  url         String?  // Storage URL (S3, etc.)
+  sessionId   String
+  uploadedById String
+  createdAt   DateTime @default(now())
+
+  // Relations
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
 }
