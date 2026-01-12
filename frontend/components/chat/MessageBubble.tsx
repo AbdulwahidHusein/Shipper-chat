@@ -5,6 +5,7 @@ import { tokens } from '@/lib/design-tokens';
 import Icon from '@/components/ui/Icon';
 import Image from 'next/image';
 import { format } from 'date-fns';
+import { detectLinks } from '@/utils/link';
 import type { Message } from '@/types';
 
 interface MessageBubbleProps {
@@ -21,6 +22,55 @@ interface MessageBubbleProps {
   onDelete: (messageId: string) => void;
   formatTime: (date: Date) => string;
   messageRef?: (el: HTMLDivElement | null) => void;
+}
+
+// Helper function to render text with clickable links
+function renderTextWithLinks(text: string, isCurrentUser: boolean) {
+  const links = detectLinks(text);
+  
+  if (links.length === 0) {
+    return <>{text}</>;
+  }
+
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+
+  links.forEach((link, index) => {
+    // Add text before the link
+    if (link.startIndex > lastIndex) {
+      parts.push(text.substring(lastIndex, link.startIndex));
+    }
+
+    // Get original link text from message
+    const originalLinkText = text.substring(link.startIndex, link.endIndex);
+
+    // Add the link
+    parts.push(
+      <a
+        key={`link-${index}`}
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          color: '#3b82f6', // Blue color for links
+          textDecoration: 'underline',
+          cursor: 'pointer',
+        }}
+      >
+        {originalLinkText}
+      </a>
+    );
+
+    lastIndex = link.endIndex;
+  });
+
+  // Add remaining text after the last link
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return <>{parts}</>;
 }
 
 export default function MessageBubble({
@@ -209,16 +259,17 @@ export default function MessageBubble({
               gap: tokens.spacing[2],
             }}
           >
-            <p
+            <div
               style={{
                 ...tokens.typography.styles.paragraphXSmall,
                 color: isCurrentUser
                   ? tokens.colors.text.neutral.main
                   : tokens.colors.text.heading.primary,
+                wordBreak: 'break-word',
               }}
             >
-              {message.content}
-            </p>
+              {renderTextWithLinks(message.content, isCurrentUser)}
+            </div>
             {isCurrentUser && (
               <div
                 className="message-actions"

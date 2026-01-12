@@ -9,6 +9,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import { useSharedContent } from '@/hooks/useSharedContent';
+import { useMessages } from '@/hooks/useMessages';
+import { sharedContentApi } from '@/lib/api-client';
+import { detectLinks } from '@/utils/link';
 import {
   groupMediaByMonth,
   groupLinksByMonth,
@@ -41,7 +44,8 @@ export default function ContactInfoModal({
 }: ContactInfoModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('media');
   const modalRef = useRef<HTMLDivElement>(null);
-  const { media, links, documents, loading } = useSharedContent(sessionId);
+  const { media, links, documents, loading, refresh: refreshSharedContent } = useSharedContent(sessionId);
+  const { messages } = useMessages(sessionId);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -66,6 +70,54 @@ export default function ContactInfoModal({
       document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
+
+  // Extract and save links from existing messages when modal opens
+  useEffect(() => {
+    if (!isOpen || !sessionId || messages.length === 0) return;
+
+    const extractAndSaveLinks = async () => {
+      const existingLinkUrls = new Set(links.map(link => link.url));
+      const linksToSave: string[] = [];
+
+      // Extract links from all TEXT messages
+      messages.forEach((message) => {
+        if (message.type === 'TEXT' && message.content) {
+          const detectedLinks = detectLinks(message.content);
+          detectedLinks.forEach((link) => {
+            if (!existingLinkUrls.has(link.url)) {
+              linksToSave.push(link.url);
+              existingLinkUrls.add(link.url); // Prevent duplicates in this batch
+            }
+          });
+        }
+      });
+
+      // Save all new links
+      if (linksToSave.length > 0) {
+        try {
+          await Promise.all(
+            linksToSave.map((url) =>
+              sharedContentApi.shareLink({
+                url,
+                title: url,
+                description: '',
+                sessionId,
+              }).catch((err) => {
+                console.error('Failed to save link:', err);
+                return null;
+              })
+            )
+          );
+          // Refresh shared content to show new links
+          await refreshSharedContent();
+        } catch (error) {
+          console.error('Error extracting links from messages:', error);
+        }
+      }
+    };
+
+    extractAndSaveLinks();
+  }, [isOpen, sessionId, messages, links, refreshSharedContent]);
 
   if (!isOpen || !user || !sessionId) return null;
 
@@ -596,15 +648,23 @@ export default function ContactInfoModal({
                                 flexShrink: 0,
                               }}
                             >
-                              <Image
-                                src={link.favicon}
-                                alt={link.title}
-                                width={48}
-                                height={48}
-                                style={{
-                                  objectFit: 'contain',
-                                }}
-                              />
+                              {link.favicon && link.favicon.trim() !== '' ? (
+                                <Image
+                                  src={link.favicon}
+                                  alt={link.title || 'Link'}
+                                  width={48}
+                                  height={48}
+                                  style={{
+                                    objectFit: 'contain',
+                                  }}
+                                />
+                              ) : (
+                                <Icon
+                                  name="link"
+                                  size={24}
+                                  color={tokens.colors.icon.secondary}
+                                />
+                              )}
                             </div>
 
                             {/* Link Info */}

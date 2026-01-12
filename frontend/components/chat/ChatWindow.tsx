@@ -32,7 +32,8 @@ import { useSocket } from '@/hooks/useSocket';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useReadDetection } from '@/hooks/useReadDetection';
 import { useFileUpload } from '@/hooks/useFileUpload';
-import { messageApi } from '@/lib/api-client';
+import { messageApi, sharedContentApi } from '@/lib/api-client';
+import { detectLinks } from '@/utils/link';
 import type { ChatSession } from '@/types';
 import ChatHeader from './ChatHeader';
 import MessageArea from './MessageArea';
@@ -194,6 +195,26 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
 
     const content = messageInput.trim();
     setMessageInput('');
+
+    // Detect and save links
+    const links = detectLinks(content);
+    if (links.length > 0 && sessionId) {
+      // Save each detected link
+      for (const link of links) {
+        try {
+          await sharedContentApi.shareLink({
+            url: link.url,
+            title: link.url, // Use URL as title, can be enhanced later
+            description: '',
+            sessionId,
+          });
+        } catch (error) {
+          // Silently fail - link saving shouldn't block message sending
+          console.error('Failed to save link:', error);
+        }
+      }
+    }
+
     await sendMessageApi(content);
   };
 
