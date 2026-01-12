@@ -1,4 +1,5 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
+import { User } from '@prisma/client';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -42,4 +43,12 @@ export const sendError = (
     },
   };
   res.status(statusCode).json(response);
+};
+
+export const getAuthenticatedUser = (req: Request, res: Response): User | null => {
+  if (!req.user) {
+    sendError(res, 'User not authenticated', 'UNAUTHORIZED', 401);
+    return null;
+  }
+  return req.user;
 };
