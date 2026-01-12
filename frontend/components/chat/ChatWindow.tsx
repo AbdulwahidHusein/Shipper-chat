@@ -196,26 +196,30 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
     const content = messageInput.trim();
     setMessageInput('');
 
-    // Detect and save links
+    // Send message immediately (don't wait for link saving)
+    await sendMessageApi(content);
+
+    // Save links in the background (non-blocking)
     const links = detectLinks(content);
     if (links.length > 0 && sessionId) {
-      // Save each detected link
-      for (const link of links) {
-        try {
-          await sharedContentApi.shareLink({
+      // Save all links in parallel (non-blocking)
+      Promise.all(
+        links.map((link) =>
+          sharedContentApi.shareLink({
             url: link.url,
-            title: link.url, // Use URL as title, can be enhanced later
+            title: link.url,
             description: '',
             sessionId,
-          });
-        } catch (error) {
-          // Silently fail - link saving shouldn't block message sending
-          console.error('Failed to save link:', error);
-        }
-      }
+          }).catch((error) => {
+            // Silently fail - link saving is background operation
+            console.error('Failed to save link:', error);
+            return null;
+          })
+        )
+      ).catch(() => {
+        // Ignore errors in background link saving
+      });
     }
-
-    await sendMessageApi(content);
   };
 
   const handleEditMessage = (messageId: string, currentContent: string) => {
