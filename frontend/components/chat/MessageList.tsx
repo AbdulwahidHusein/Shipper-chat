@@ -202,11 +202,13 @@ export default function MessageList({
         backgroundColor: tokens.colors.surface.default,
         display: 'flex',
         flexDirection: 'column',
-        height: '932px',
+        flex: '0 0 auto',
         width: tokens.dimensions.messageList.width, // 400px
         padding: tokens.spacing[6], // 24px
         borderRadius: tokens.borderRadius['2xl'], // 24px
         gap: tokens.spacing[6], // 24px
+        minHeight: 0,
+        overflow: 'hidden',
       }}
     >
       {/* Header */}
@@ -278,7 +280,9 @@ export default function MessageList({
           flexDirection: 'column',
           gap: tokens.spacing[2], // 8px
           overflowY: 'auto',
+          overflowX: 'hidden',
           flex: 1,
+          minHeight: 0,
         }}
       >
         {filteredSessions.length === 0 ? (
@@ -320,8 +324,8 @@ export default function MessageList({
 
           const isHovered = hoveredSessionId === session.id;
           const isSwiped = swipedSessionId === session.id;
-          // Show Archive on hover (desktop) or swipe left (mobile)
-          const showArchiveButton = (isHovered && !isSwiped) || (isSwiped && swipeDirection === 'left' && swipeOffset >= 0);
+          // Show Archive only on swipe left (mobile) - NOT on hover to avoid clutter
+          const showArchiveButton = isSwiped && swipeDirection === 'left' && swipeOffset >= 0;
           // Show Unread only on swipe right (mobile)
           const showUnreadButton = isSwiped && swipeDirection === 'right' && swipeOffset < 0;
 
@@ -334,9 +338,18 @@ export default function MessageList({
                 alignItems: 'center',
                 position: 'relative',
                 overflow: 'hidden',
+                width: '100%',
               }}
               onMouseEnter={() => setHoveredSessionId(session.id)}
-              onMouseLeave={() => setHoveredSessionId(null)}
+              onMouseLeave={() => {
+                setHoveredSessionId(null);
+                // Reset swipe state on mouse leave if not actively swiping
+                if (swipedSessionId === session.id && swipeStartX === null) {
+                  setSwipedSessionId(null);
+                  setSwipeOffset(0);
+                  setSwipeDirection(null);
+                }
+              }}
             >
               <div
                 style={{
@@ -515,81 +528,83 @@ export default function MessageList({
             </button>
               </div>
               
-              {/* Mark as Unread Quick Action Button (Left Side) */}
-              <button
-                onClick={(e) => handleMarkUnreadClick(e, session.id)}
-                onMouseDown={(e) => e.stopPropagation()}
-                style={{
-                  position: 'absolute',
-                  left: showUnreadButton ? '0' : '-80px',
-                  top: '0',
-                  width: '80px',
-                  height: '100%',
-                  backgroundColor: tokens.colors.brand[500], // Same teal-green as Archive
-                  border: 'none',
-                  borderRadius: tokens.borderRadius.lg, // 12px
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px',
-                  transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  zIndex: 1,
-                  padding: tokens.spacing[2], // 8px
-                }}
-              >
-                <Icon name="message-circle-2" size={20} color={tokens.colors.text.neutral.white} />
-                <span
+              {/* Mark as Unread Quick Action Button (Left Side) - Only on swipe */}
+              {showUnreadButton && (
+                <button
+                  onClick={(e) => handleMarkUnreadClick(e, session.id)}
+                  onMouseDown={(e) => e.stopPropagation()}
                   style={{
-                    ...tokens.typography.styles.labelXSmall,
-                    color: tokens.colors.text.neutral.white,
-                    fontSize: '12px',
-                    lineHeight: '14px',
-                    fontWeight: tokens.typography.fontWeight.medium,
+                    position: 'absolute',
+                    left: '0',
+                    top: '0',
+                    width: '80px',
+                    height: '100%',
+                    backgroundColor: tokens.colors.brand[500],
+                    border: 'none',
+                    borderRadius: tokens.borderRadius.lg, // 12px
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    zIndex: 2,
+                    padding: tokens.spacing[2], // 8px
                   }}
                 >
-                  Unread
-                </span>
-              </button>
+                  <Icon name="message-circle-2" size={20} color={tokens.colors.text.neutral.white} />
+                  <span
+                    style={{
+                      ...tokens.typography.styles.labelXSmall,
+                      color: tokens.colors.text.neutral.white,
+                      fontSize: '12px',
+                      lineHeight: '14px',
+                      fontWeight: tokens.typography.fontWeight.medium,
+                    }}
+                  >
+                    Unread
+                  </span>
+                </button>
+              )}
 
-              {/* Archive Quick Action Button (Right Side) */}
-              <button
-                onClick={(e) => handleArchiveClick(e, session.id)}
-                onMouseDown={(e) => e.stopPropagation()}
-                style={{
-                  position: 'absolute',
-                  right: showArchiveButton ? '0' : '-80px',
-                  top: '0',
-                  width: '80px',
-                  height: '100%',
-                  backgroundColor: tokens.colors.brand[500],
-                  border: 'none',
-                  borderRadius: tokens.borderRadius.lg, // 12px
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px',
-                  transition: 'right 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  zIndex: 1,
-                  padding: tokens.spacing[2], // 8px
-                }}
-              >
-                <Icon name="archive" size={20} color={tokens.colors.text.neutral.white} />
-                <span
+              {/* Archive Quick Action Button (Right Side) - Only on swipe */}
+              {showArchiveButton && (
+                <button
+                  onClick={(e) => handleArchiveClick(e, session.id)}
+                  onMouseDown={(e) => e.stopPropagation()}
                   style={{
-                    ...tokens.typography.styles.labelXSmall,
-                    color: tokens.colors.text.neutral.white,
-                    fontSize: '12px',
-                    lineHeight: '14px',
-                    fontWeight: tokens.typography.fontWeight.medium,
+                    position: 'absolute',
+                    right: '0',
+                    top: '0',
+                    width: '80px',
+                    height: '100%',
+                    backgroundColor: tokens.colors.brand[500],
+                    border: 'none',
+                    borderRadius: tokens.borderRadius.lg, // 12px
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    zIndex: 2,
+                    padding: tokens.spacing[2], // 8px
                   }}
                 >
-                  Archive
-                </span>
-              </button>
+                  <Icon name="archive" size={20} color={tokens.colors.text.neutral.white} />
+                  <span
+                    style={{
+                      ...tokens.typography.styles.labelXSmall,
+                      color: tokens.colors.text.neutral.white,
+                      fontSize: '12px',
+                      lineHeight: '14px',
+                      fontWeight: tokens.typography.fontWeight.medium,
+                    }}
+                  >
+                    Archive
+                  </span>
+                </button>
+              )}
             </div>
           );
           })

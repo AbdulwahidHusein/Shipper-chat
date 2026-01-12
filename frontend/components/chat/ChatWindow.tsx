@@ -36,10 +36,13 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
   const { messages, loading, sendMessage: sendMessageApi, markAllRead } = useMessages(sessionId);
   const [messageInput, setMessageInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change - only scroll the message container, not the page
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   // Mark messages as read when session is selected
@@ -120,7 +123,7 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
+        minHeight: 0,
         backgroundColor: tokens.colors.surface.default,
         borderRadius: tokens.borderRadius['2xl'], // 24px
         padding: tokens.spacing[3], // 12px
@@ -241,6 +244,7 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
 
       {/* Message Area */}
       <div
+        ref={messagesContainerRef}
         style={{
           flex: 1,
           display: 'flex',
@@ -250,53 +254,66 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
           backgroundColor: tokens.colors.background.primary,
           borderRadius: tokens.borderRadius.xl, // 16px
           overflowY: 'auto',
-          justifyContent: 'flex-end',
+          overflowX: 'hidden',
+          minHeight: 0,
+          position: 'relative',
         }}
       >
-        {/* Date Divider */}
-        {messages.length > 0 && isToday(messages[0].createdAt) && (
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              width: '100%',
-            }}
-          >
+        {/* Messages Container - Wrapper to ensure proper scrolling */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacing[3], // 12px
+            minHeight: 'min-content',
+          }}
+        >
+          {/* Date Divider */}
+          {messages.length > 0 && isToday(messages[0].createdAt) && (
             <div
               style={{
-                backgroundColor: tokens.colors.surface.default,
-                padding: '4px 12px',
-                borderRadius: tokens.borderRadius.pill, // 60px
+                display: 'flex',
+                justifyContent: 'center',
+                width: '100%',
+                flexShrink: 0,
               }}
             >
-              <p
+              <div
                 style={{
-                  ...tokens.typography.styles.labelSmall,
-                  color: tokens.colors.text.neutral.sub,
+                  backgroundColor: tokens.colors.surface.default,
+                  padding: '4px 12px',
+                  borderRadius: tokens.borderRadius.pill, // 60px
                 }}
               >
-                Today
-              </p>
+                <p
+                  style={{
+                    ...tokens.typography.styles.labelSmall,
+                    color: tokens.colors.text.neutral.sub,
+                  }}
+                >
+                  Today
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Loading State */}
-        {loading && messages.length === 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: tokens.spacing[8],
-            }}
-          >
-            <LoadingSpinner size="md" message="Loading messages..." />
-          </div>
-        )}
+          {/* Loading State */}
+          {loading && messages.length === 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: tokens.spacing[8],
+                flexShrink: 0,
+              }}
+            >
+              <LoadingSpinner size="md" message="Loading messages..." />
+            </div>
+          )}
 
-        {/* Messages */}
-        {messages.map((message, index) => {
+          {/* Messages */}
+          {messages.map((message, index) => {
           const isCurrentUser = message.senderId === user.id;
           const prevMessage = index > 0 ? messages[index - 1] : null;
           const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
@@ -377,8 +394,9 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
           );
         })}
 
-        {/* Scroll anchor */}
-        <div ref={messagesEndRef} />
+          {/* Scroll anchor */}
+          <div ref={messagesEndRef} style={{ flexShrink: 0 }} />
+        </div>
       </div>
 
       {/* Input Area */}
