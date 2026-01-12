@@ -5,13 +5,24 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { tokens } from '@/lib/design-tokens';
-import { getMessagesForSession, getOtherParticipant, mockSessions, currentUser } from '@/data/mockData';
-import type { ChatSession, Message } from '@/types';
+import { useMessages } from '@/hooks/useMessages';
+import { useSessions } from '@/hooks/useSessions';
+import { useAuth } from '@/contexts/AuthContext';
+import type { ChatSession } from '@/types';
 import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/ui/Icon';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { format } from 'date-fns';
+
+// Helper function to get other participant
+function getOtherParticipant(session: ChatSession, currentUserId: string) {
+  if (session.participant1Id === currentUserId) {
+    return session.participant2;
+  }
+  return session.participant1;
+}
 
 interface ChatWindowProps {
   sessionId?: string;
@@ -20,7 +31,23 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo }: ChatWindowProps) {
+  const { user } = useAuth();
+  const { sessions } = useSessions();
+  const { messages, loading, sendMessage: sendMessageApi, markAllRead } = useMessages(sessionId);
   const [messageInput, setMessageInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Mark messages as read when session is selected
+  useEffect(() => {
+    if (sessionId) {
+      markAllRead();
+    }
+  }, [sessionId, markAllRead]);
 
   if (!sessionId) {
     return (
@@ -47,11 +74,25 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
     );
   }
 
-  const session = mockSessions.find((s) => s.id === sessionId);
-  if (!session) return null;
+  const session = sessions.find((s) => s.id === sessionId);
+  if (!session || !user) {
+    return (
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: tokens.colors.surface.default,
+          borderRadius: tokens.borderRadius['2xl'],
+        }}
+      >
+        <LoadingSpinner size="md" message="Loading conversation..." />
+      </div>
+    );
+  }
 
-  const otherParticipant = getOtherParticipant(session, currentUser.id);
-  const messages = getMessagesForSession(sessionId);
+  const otherParticipant = getOtherParticipant(session, user.id);
 
   const formatMessageTime = (date: Date) => {
     return format(date, 'h:mm a');
@@ -66,10 +107,11 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
     );
   };
 
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) return;
-    // TODO: Implement message sending
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !sessionId) return;
+    const content = messageInput.trim();
     setMessageInput('');
+    await sendMessageApi(content);
   };
 
   return (
@@ -129,10 +171,12 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
           <p
             style={{
               ...tokens.typography.styles.paragraphXSmall,
-              color: tokens.colors.text.state.success,
+              color: otherParticipant?.isOnline
+                ? tokens.colors.text.state.success
+                : tokens.colors.text.placeholder,
             }}
           >
-            Online
+            {otherParticipant?.isOnline ? 'Online' : 'Offline'}
           </p>
         </div>
         <div
@@ -237,9 +281,23 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
           </div>
         )}
 
+        {/* Loading State */}
+        {loading && messages.length === 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: tokens.spacing[8],
+            }}
+          >
+            <LoadingSpinner size="md" message="Loading messages..." />
+          </div>
+        )}
+
         {/* Messages */}
         {messages.map((message, index) => {
-          const isCurrentUser = message.senderId === currentUser.id;
+          const isCurrentUser = message.senderId === user.id;
           const prevMessage = index > 0 ? messages[index - 1] : null;
           const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
           const isGrouped =
@@ -318,6 +376,9 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
             </div>
           );
         })}
+
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}

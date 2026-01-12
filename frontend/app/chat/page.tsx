@@ -17,14 +17,30 @@ import ContactInfoModal from '@/components/modals/ContactInfoModal';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { tokens } from '@/lib/design-tokens';
-import { mockUsers, mockSessions, getOtherParticipant } from '@/data/mockData';
+import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
-import type { User } from '@/types';
+import type { User, ChatSession } from '@/types';
+
+// Helper function to get other participant
+function getOtherParticipant(session: ChatSession, currentUserId: string) {
+  if (session.participant1Id === currentUserId) {
+    return session.participant2;
+  }
+  return session.participant1;
+}
 
 export default function ChatPage() {
-  const { user, loading, refreshUser } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
+  const {
+    sessions,
+    createSession,
+    archiveSession,
+    muteSession,
+    markUnread,
+    deleteSession,
+  } = useSessions();
   const router = useRouter();
-  const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>('session1');
+  const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>(undefined);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [showContactInfo, setShowContactInfo] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
@@ -55,20 +71,24 @@ export default function ChatPage() {
     });
   };
 
-  const handleSelectUser = (user: User) => {
-    // Find or create a session with this user
-    const existingSession = mockSessions.find(
+  const handleSelectUser = async (selectedUser: User) => {
+    if (!user) return;
+
+    // Find existing session with this user
+    const existingSession = sessions.find(
       (session) =>
-        (session.participant1Id === user.id || session.participant2Id === user.id) &&
-        (session.participant1Id === '8' || session.participant2Id === '8') // current user id
+        (session.participant1Id === selectedUser.id || session.participant2Id === selectedUser.id) &&
+        (session.participant1Id === user.id || session.participant2Id === user.id)
     );
-    
+
     if (existingSession) {
       setSelectedSessionId(existingSession.id);
     } else {
-      // For now, just select the first session
-      // In real app, we'd create a new session
-      setSelectedSessionId('session1');
+      // Create new session
+      const newSession = await createSession(selectedUser.id);
+      if (newSession) {
+        setSelectedSessionId(newSession.id);
+      }
     }
   };
 
@@ -76,7 +96,7 @@ export default function ChatPage() {
     setShowContactInfo(true);
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div
         style={{
@@ -148,14 +168,17 @@ export default function ChatPage() {
         isOpen={contextMenu.isOpen}
         position={contextMenu.position}
         onClose={() => setContextMenu({ ...contextMenu, isOpen: false })}
-        onMarkUnread={() => {
-          console.log('Mark as unread:', contextMenu.sessionId);
+        onMarkUnread={async () => {
+          await markUnread(contextMenu.sessionId);
+          setContextMenu({ ...contextMenu, isOpen: false });
         }}
-        onArchive={() => {
-          console.log('Archive:', contextMenu.sessionId);
+        onArchive={async () => {
+          await archiveSession(contextMenu.sessionId);
+          setContextMenu({ ...contextMenu, isOpen: false });
         }}
-        onMute={() => {
-          console.log('Mute:', contextMenu.sessionId);
+        onMute={async () => {
+          await muteSession(contextMenu.sessionId);
+          setContextMenu({ ...contextMenu, isOpen: false });
         }}
         onContactInfo={() => {
           setShowContactInfo(true);
@@ -163,22 +186,33 @@ export default function ChatPage() {
         }}
         onExportChat={() => {
           console.log('Export chat:', contextMenu.sessionId);
+          setContextMenu({ ...contextMenu, isOpen: false });
         }}
-        onClearChat={() => {
+        onClearChat={async () => {
+          // TODO: Implement clear chat
           console.log('Clear chat:', contextMenu.sessionId);
+          setContextMenu({ ...contextMenu, isOpen: false });
         }}
-        onDeleteChat={() => {
-          console.log('Delete chat:', contextMenu.sessionId);
+        onDeleteChat={async () => {
+          await deleteSession(contextMenu.sessionId);
+          if (selectedSessionId === contextMenu.sessionId) {
+            setSelectedSessionId(undefined);
+          }
+          setContextMenu({ ...contextMenu, isOpen: false });
         }}
       />
 
       {/* Contact Info Modal */}
       <ContactInfoModal
         isOpen={showContactInfo}
-        user={selectedSessionId ? getOtherParticipant(
-          mockSessions.find((s) => s.id === selectedSessionId)!,
-          '8'
-        ) : undefined}
+        user={
+          selectedSessionId && user
+            ? getOtherParticipant(
+                sessions.find((s) => s.id === selectedSessionId)!,
+                user.id
+              )
+            : undefined
+        }
         sessionId={selectedSessionId}
         onClose={() => setShowContactInfo(false)}
         onAudioCall={() => {

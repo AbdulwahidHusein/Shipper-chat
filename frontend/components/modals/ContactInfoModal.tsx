@@ -8,12 +8,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { tokens } from '@/lib/design-tokens';
-import { 
-  getSharedMediaForSession, 
+import { useSharedContent } from '@/hooks/useSharedContent';
+import {
   groupMediaByMonth,
-  getSharedLinksForSession,
   groupLinksByMonth,
-  getSharedDocumentsForSession,
   groupDocumentsByMonth,
   formatFileSize,
 } from '@/data/mockData';
@@ -43,6 +41,7 @@ export default function ContactInfoModal({
 }: ContactInfoModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('media');
   const modalRef = useRef<HTMLDivElement>(null);
+  const { media, links, documents, loading } = useSharedContent(sessionId);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,14 +69,11 @@ export default function ContactInfoModal({
 
   if (!isOpen || !user || !sessionId) return null;
 
-  const sharedMedia = getSharedMediaForSession(sessionId);
-  const mediaByMonth = groupMediaByMonth(sharedMedia);
-  
-  const sharedLinks = getSharedLinksForSession(sessionId);
-  const linksByMonth = groupLinksByMonth(sharedLinks);
-  
-  const sharedDocuments = getSharedDocumentsForSession(sessionId);
-  const documentsByMonth = groupDocumentsByMonth(sharedDocuments);
+  // Use shared content from hook
+
+  const mediaByMonth = groupMediaByMonth(media);
+  const linksByMonth = groupLinksByMonth(links);
+  const documentsByMonth = groupDocumentsByMonth(documents);
 
   // Helper function to get document icon color
   const getDocIconColor = (type: string): string => {

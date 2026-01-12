@@ -7,13 +7,23 @@
 
 import { useState } from 'react';
 import { tokens } from '@/lib/design-tokens';
-import { mockSessions, currentUser, getOtherParticipant } from '@/data/mockData';
+import { useSessions } from '@/hooks/useSessions';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ChatSession } from '@/types';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Icon from '@/components/ui/Icon';
 import Avatar from '@/components/ui/Avatar';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { formatDistanceToNow } from 'date-fns';
+
+// Helper function to get other participant
+function getOtherParticipant(session: ChatSession, currentUserId: string) {
+  if (session.participant1Id === currentUserId) {
+    return session.participant2;
+  }
+  return session.participant1;
+}
 
 interface MessageListProps {
   selectedSessionId?: string;
@@ -28,6 +38,8 @@ export default function MessageList({
   onNewMessage,
   onOpenContextMenu,
 }: MessageListProps) {
+  const { user } = useAuth();
+  const { sessions, loading, archiveSession, markUnread } = useSessions();
   const [searchQuery, setSearchQuery] = useState('');
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
@@ -126,19 +138,17 @@ export default function MessageList({
     setSwipeStartX(null);
   };
 
-  const handleArchiveClick = (e: React.MouseEvent, sessionId: string) => {
+  const handleArchiveClick = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
-    console.log('Archive chat:', sessionId);
-    // TODO: Implement archive functionality
+    await archiveSession(sessionId);
     setSwipedSessionId(null);
     setSwipeOffset(0);
     setSwipeDirection(null);
   };
 
-  const handleMarkUnreadClick = (e: React.MouseEvent, sessionId: string) => {
+  const handleMarkUnreadClick = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
-    console.log('Mark as unread:', sessionId);
-    // TODO: Implement mark as unread functionality
+    await markUnread(sessionId);
     setSwipedSessionId(null);
     setSwipeOffset(0);
     setSwipeDirection(null);
@@ -160,11 +170,31 @@ export default function MessageList({
     return formatDistanceToNow(date, { addSuffix: true });
   };
 
-  const filteredSessions = mockSessions.filter((session) => {
-    if (!searchQuery) return true;
-    const otherParticipant = getOtherParticipant(session, currentUser.id);
+  const filteredSessions = sessions.filter((session) => {
+    if (!searchQuery || !user) return true;
+    const otherParticipant = getOtherParticipant(session, user.id);
     return otherParticipant?.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          backgroundColor: tokens.colors.surface.default,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '932px',
+          width: tokens.dimensions.messageList.width,
+          padding: tokens.spacing[6],
+          borderRadius: tokens.borderRadius['2xl'],
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <LoadingSpinner size="md" message="Loading conversations..." />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -251,8 +281,40 @@ export default function MessageList({
           flex: 1,
         }}
       >
-        {filteredSessions.map((session) => {
-          const otherParticipant = getOtherParticipant(session, currentUser.id);
+        {filteredSessions.length === 0 ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: tokens.spacing[8],
+              gap: tokens.spacing[2],
+            }}
+          >
+            <p
+              style={{
+                ...tokens.typography.styles.paragraphSmall,
+                color: tokens.colors.text.placeholder,
+                textAlign: 'center',
+              }}
+            >
+              No conversations yet
+            </p>
+            <p
+              style={{
+                ...tokens.typography.styles.paragraphXSmall,
+                color: tokens.colors.text.placeholder,
+                textAlign: 'center',
+              }}
+            >
+              Start a new conversation to get started
+            </p>
+          </div>
+        ) : (
+          filteredSessions.map((session) => {
+            if (!user) return null;
+            const otherParticipant = getOtherParticipant(session, user.id);
           const isSelected = selectedSessionId === session.id;
           const hasUnread = (session.unreadCount || 0) > 0;
 
@@ -530,7 +592,8 @@ export default function MessageList({
               </button>
             </div>
           );
-        })}
+          })
+        )}
       </div>
 
     </div>

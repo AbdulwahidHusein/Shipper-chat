@@ -111,4 +111,81 @@ export const userApi = {
   getUserProfile: (userId: string) => apiClient.get(`/users/${userId}`),
   updateProfile: (data: { name?: string; picture?: string }) =>
     apiClient.patch('/users/me', data),
+  getAllUsers: () => apiClient.get('/users'),
+  getOnlineUsers: () => apiClient.get('/users/online'),
+};
+
+export const sessionApi = {
+  getSessions: (includeArchived?: boolean) =>
+    apiClient.get(`/sessions${includeArchived ? '?archived=true' : ''}`),
+  getSession: (sessionId: string) => apiClient.get(`/sessions/${sessionId}`),
+  createSession: (data: { participant2Id: string; type?: 'DIRECT' | 'GROUP' | 'AI' }) =>
+    apiClient.post('/sessions', data),
+  archiveSession: (sessionId: string) =>
+    apiClient.patch(`/sessions/${sessionId}/archive`),
+  unarchiveSession: (sessionId: string) =>
+    apiClient.patch(`/sessions/${sessionId}/unarchive`),
+  muteSession: (sessionId: string) =>
+    apiClient.patch(`/sessions/${sessionId}/mute`),
+  unmuteSession: (sessionId: string) =>
+    apiClient.patch(`/sessions/${sessionId}/unmute`),
+  markUnread: (sessionId: string) =>
+    apiClient.patch(`/sessions/${sessionId}/mark-unread`),
+  deleteSession: (sessionId: string) =>
+    apiClient.delete(`/sessions/${sessionId}`),
+};
+
+export const messageApi = {
+  getMessages: (sessionId: string, limit?: number, cursor?: string) => {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (cursor) params.append('cursor', cursor);
+    const query = params.toString();
+    return apiClient.get(`/messages/session/${sessionId}${query ? `?${query}` : ''}`);
+  },
+  sendMessage: (data: {
+    content: string;
+    sessionId: string;
+    type?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'LINK';
+  }) => apiClient.post('/messages', data),
+  editMessage: (messageId: string, data: { content: string }) =>
+    apiClient.patch(`/messages/${messageId}`, data),
+  markRead: (messageId: string) =>
+    apiClient.patch(`/messages/${messageId}/read`),
+  markAllRead: (sessionId: string) =>
+    apiClient.patch(`/messages/session/${sessionId}/read-all`),
+  deleteMessage: (messageId: string) =>
+    apiClient.delete(`/messages/${messageId}`),
+  clearMessages: (sessionId: string) =>
+    apiClient.delete(`/messages/session/${sessionId}/clear`),
+};
+
+export const sharedContentApi = {
+  getSharedMedia: (sessionId: string) =>
+    apiClient.get(`/shared/media/session/${sessionId}`),
+  shareMedia: (data: {
+    type: 'IMAGE' | 'VIDEO';
+    url: string;
+    thumbnailUrl: string;
+    sessionId: string;
+  }) => apiClient.post('/shared/media', data),
+  getSharedLinks: (sessionId: string) =>
+    apiClient.get(`/shared/links/session/${sessionId}`),
+  shareLink: (data: {
+    url: string;
+    title: string;
+    description?: string;
+    favicon?: string;
+    sessionId: string;
+  }) => apiClient.post('/shared/links', data),
+  getSharedDocuments: (sessionId: string) =>
+    apiClient.get(`/shared/documents/session/${sessionId}`),
+  shareDocument: (data: {
+    name: string;
+    type: 'PDF' | 'DOC' | 'DOCX' | 'FIG' | 'AI' | 'PSD' | 'XD' | 'SKETCH';
+    size: number;
+    pages?: number;
+    url?: string;
+    sessionId: string;
+  }) => apiClient.post('/shared/documents', data),
 };

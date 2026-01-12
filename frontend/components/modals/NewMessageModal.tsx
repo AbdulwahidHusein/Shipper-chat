@@ -7,11 +7,13 @@
 
 import { useState, useMemo } from 'react';
 import { tokens } from '@/lib/design-tokens';
-import { mockUsers, currentUser } from '@/data/mockData';
+import { useUsers } from '@/hooks/useUsers';
+import { useAuth } from '@/contexts/AuthContext';
 import type { User } from '@/types';
 import Input from '@/components/ui/Input';
 import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/ui/Icon';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 interface NewMessageModalProps {
   isOpen: boolean;
@@ -24,21 +26,24 @@ export default function NewMessageModal({
   onClose,
   onSelectUser,
 }: NewMessageModalProps) {
+  const { user } = useAuth();
+  const { users, loading } = useUsers();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter out current user and filter by search query
   const availableUsers = useMemo(() => {
-    return mockUsers
-      .filter((user) => user.id !== currentUser.id)
-      .filter((user) => {
+    if (!user) return [];
+    return users
+      .filter((u) => u.id !== user.id)
+      .filter((u) => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
         return (
-          user.name.toLowerCase().includes(query) ||
-          user.email.toLowerCase().includes(query)
+          u.name.toLowerCase().includes(query) ||
+          u.email.toLowerCase().includes(query)
         );
       });
-  }, [searchQuery]);
+  }, [users, user, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -131,48 +136,79 @@ export default function NewMessageModal({
               gap: 0,
             }}
           >
-            {availableUsers.map((user) => (
-              <button
-                key={user.id}
-                onClick={() => handleUserClick(user)}
+            {loading ? (
+              <div
                 style={{
                   display: 'flex',
-                  gap: tokens.spacing[2], // 8px
                   alignItems: 'center',
-                  padding: '6px 8px',
-                  borderRadius: tokens.borderRadius.base, // 8px
-                  width: '100%',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background-color 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = tokens.colors.surface.weak;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
+                  justifyContent: 'center',
+                  padding: tokens.spacing[8],
                 }}
               >
-                <Avatar
-                  src={user.picture}
-                  name={user.name}
-                  size="md"
-                />
+                <LoadingSpinner size="md" message="Loading users..." />
+              </div>
+            ) : availableUsers.length === 0 ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: tokens.spacing[8],
+                }}
+              >
                 <p
                   style={{
-                    ...tokens.typography.styles.paragraphXSmall,
-                    color: tokens.colors.text.heading.primary,
-                    fontWeight: tokens.typography.fontWeight.regular,
-                    fontSize: '16px',
-                    lineHeight: '16px',
+                    ...tokens.typography.styles.paragraphSmall,
+                    color: tokens.colors.text.placeholder,
                   }}
                 >
-                  {user.name}
+                  {searchQuery ? 'No users found' : 'No users available'}
                 </p>
-              </button>
-            ))}
+              </div>
+            ) : (
+              availableUsers.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => handleUserClick(user)}
+                  style={{
+                    display: 'flex',
+                    gap: tokens.spacing[2], // 8px
+                    alignItems: 'center',
+                    padding: '6px 8px',
+                    borderRadius: tokens.borderRadius.base, // 8px
+                    width: '100%',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background-color 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = tokens.colors.surface.weak;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  <Avatar
+                    src={user.picture}
+                    name={user.name}
+                    size="md"
+                  />
+                  <p
+                    style={{
+                      ...tokens.typography.styles.paragraphXSmall,
+                      color: tokens.colors.text.heading.primary,
+                      fontWeight: tokens.typography.fontWeight.regular,
+                      fontSize: '16px',
+                      lineHeight: '16px',
+                    }}
+                  >
+                    {user.name}
+                  </p>
+                </button>
+              ))
+            )}
           </div>
         </div>
       </div>
