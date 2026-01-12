@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  /* Design Tokens from Figma */
+  /* Brand Colors */
+  --color-brand-500: #1e9a80;
+  
+  /* Background Colors */
+  --color-bg-primary: #f3f3ee;
+  --color-bg-brand-primary: #f0fdf4;
+  --color-bg-tertiary: #f8f8f5;
+  --color-bg-senary: #e8e5df;
+  
+  /* Surface Colors */
+  --color-surface-default: #ffffff;
+  --color-surface-weak: #f7f9fb;
+  
+  /* Border Colors */
+  --color-border-primary: #e8e5df;
+  --color-border-brand: #1e9a80;
+  
+  /* Text Colors */
+  --color-text-neutral-main: #111625;
+  --color-text-neutral-sub: #596881;
+  --color-text-neutral-soft: #8796af;
+  --color-text-neutral-white: #ffffff;
+  --color-text-heading-primary: #1c1c1c;
+  --color-text-heading-secondary: #404040;
+  --color-text-placeholder: #8b8b8b;
+  --color-text-success: #38c793;
+  
+  /* Icon Colors */
+  --color-icon-primary: #151515;
+  --color-icon-secondary: #262626;
+  --color-icon-quinary: #8b8b8b;
+  
+  /* Font */
+  --font-sans: var(--font-inter), 'Inter', sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--color-bg-primary);
+  --color-foreground: var(--color-text-neutral-main);
+  --font-sans: var(--font-inter);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-neutral-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
