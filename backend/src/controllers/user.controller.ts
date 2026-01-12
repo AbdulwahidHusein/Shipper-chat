@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { findUserById } from '../services/user.service';
 import { sendSuccess, sendError } from '../utils/responses';
 import { z } from 'zod';
+import { User } from '@prisma/client';
 
 const updateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -48,7 +49,7 @@ export const updateOwnProfile = async (req: Request, res: Response): Promise<voi
     }
 
     const { updateUser } = await import('../services/user.service');
-    const updatedUser = await updateUser(req.user.id, validation.data);
+    const updatedUser = await updateUser((req.user as User).id, validation.data);
 
     const { id, email, name, picture, isOnline, lastSeen } = updatedUser;
     sendSuccess(res, {
@@ -72,7 +73,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
     }
 
     const { findAllUsers } = await import('../services/user.service');
-    const users = await findAllUsers(req.user.id);
+    const users = await findAllUsers((req.user as User).id);
 
     sendSuccess(res, users);
   } catch (error) {
@@ -89,7 +90,7 @@ export const getOnlineUsers = async (req: Request, res: Response): Promise<void>
     }
 
     const { findOnlineUsers } = await import('../services/user.service');
-    const users = await findOnlineUsers(req.user.id);
+    const users = await findOnlineUsers((req.user as User).id);
 
     sendSuccess(res, users);
   } catch (error) {
