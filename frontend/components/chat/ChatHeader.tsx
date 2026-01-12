@@ -3,6 +3,7 @@
 import { tokens } from '@/lib/design-tokens';
 import Avatar from '@/components/ui/Avatar';
 import Icon from '@/components/ui/Icon';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import type { User } from '@/types';
 
 interface ChatHeaderProps {
@@ -11,6 +12,7 @@ interface ChatHeaderProps {
   isArchived?: boolean;
   onOpenContactInfo?: () => void;
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
+  onBack?: () => void;
 }
 
 export default function ChatHeader({
@@ -19,7 +21,9 @@ export default function ChatHeader({
   isArchived = false,
   onOpenContactInfo,
   onOpenContextMenu,
+  onBack,
 }: ChatHeaderProps) {
+  const isMobile = useIsMobile();
   return (
     <div
       style={{
@@ -30,6 +34,26 @@ export default function ChatHeader({
         borderBottom: `1px solid ${tokens.colors.border.primary}`,
       }}
     >
+      {/* Back button on mobile */}
+      {isMobile && onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '32px',
+            height: '32px',
+            backgroundColor: tokens.colors.surface.default,
+            border: `1px solid ${tokens.colors.border.primary}`,
+            borderRadius: tokens.borderRadius.base,
+            cursor: 'pointer',
+            marginRight: tokens.spacing[2],
+          }}
+        >
+          <Icon name="arrow-left" size={18} color={tokens.colors.icon.secondary} />
+        </button>
+      )}
       <button
         onClick={onOpenContactInfo}
         style={{

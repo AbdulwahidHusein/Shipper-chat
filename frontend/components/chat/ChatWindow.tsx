@@ -32,6 +32,7 @@ import { useSocket } from '@/hooks/useSocket';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useReadDetection } from '@/hooks/useReadDetection';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { messageApi, sharedContentApi } from '@/lib/api-client';
 import { detectLinks } from '@/utils/link';
 import type { ChatSession } from '@/types';
@@ -53,13 +54,15 @@ interface ChatWindowProps {
   sessionId?: string;
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
   onOpenContactInfo?: () => void;
+  onBack?: () => void;
 }
 
-export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo }: ChatWindowProps) {
+export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo, onBack }: ChatWindowProps) {
   const { user } = useAuth();
   const { sessions } = useSessions(true); // Include archived sessions
   const { messages, loading, sendMessage: sendMessageApi, markAllRead, markMessageAsRead } = useMessages(sessionId);
   const { isConnected, emit } = useSocket();
+  const isMobile = useIsMobile();
   const [messageInput, setMessageInput] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -265,9 +268,11 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
         flexDirection: 'column',
         minHeight: 0,
         backgroundColor: tokens.colors.surface.default,
-        borderRadius: tokens.borderRadius['2xl'],
+        borderRadius: isMobile ? 0 : tokens.borderRadius['2xl'], // No border radius on mobile
         padding: tokens.spacing[3],
         overflow: 'hidden',
+        width: isMobile && sessionId ? '100%' : 'auto', // Full width on mobile when session selected
+        ...(isMobile && sessionId ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } : {}),
       }}
     >
       {/* Chat Header */}
@@ -277,6 +282,7 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
         isArchived={session.isArchived || false}
         onOpenContactInfo={onOpenContactInfo}
         onOpenContextMenu={onOpenContextMenu}
+        onBack={onBack}
       />
 
       {/* Message Area */}

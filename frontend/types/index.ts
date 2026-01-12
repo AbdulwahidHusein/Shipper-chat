@@ -32,6 +32,8 @@ export interface ChatSession {
   participant2?: User;
   lastMessage?: Message;
   unreadCount?: number;
+  isArchived?: boolean;
+  isMuted?: boolean;
   updatedAt: Date;
   createdAt: Date;
 }

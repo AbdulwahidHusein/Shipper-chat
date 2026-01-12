@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import { useSharedContent } from '@/hooks/useSharedContent';
 import { useMessages } from '@/hooks/useMessages';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { sharedContentApi } from '@/lib/api-client';
 import { detectLinks } from '@/utils/link';
 import {
@@ -44,6 +45,7 @@ export default function ContactInfoModal({
 }: ContactInfoModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('media');
   const modalRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const { media, links, documents, loading, refresh: refreshSharedContent } = useSharedContent(sessionId);
   const { messages } = useMessages(sessionId);
 
@@ -63,13 +65,27 @@ export default function ContactInfoModal({
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll on mobile when modal is open
+      if (isMobile) {
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+      }
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
+      // Restore body scroll when modal closes
+      if (isMobile) {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+      }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isMobile]);
 
   // Extract and save links from existing messages when modal opens
   useEffect(() => {
@@ -159,24 +175,41 @@ export default function ContactInfoModal({
         }}
       />
 
-      {/* Contact Info Panel - Exact Figma specs: 450px × 1000px */}
+      {/* Contact Info Panel - Responsive: Full screen on mobile, 450px on desktop */}
       <div
         ref={modalRef}
         style={{
           position: 'fixed',
-          top: '12px',
-          right: '12px',
-          width: '450px',
-          height: '1000px',
+          ...(isMobile
+            ? {
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                margin: 0,
+                borderRadius: 0,
+                transform: 'none',
+                padding: tokens.spacing[4], // 16px on mobile
+              }
+            : {
+                top: '12px',
+                right: '12px',
+                width: '450px',
+                height: '1000px',
+                maxHeight: 'calc(100vh - 24px)',
+                borderRadius: tokens.borderRadius['2xl'], // 24px
+                padding: tokens.spacing[6], // 24px on desktop
+              }),
           backgroundColor: tokens.colors.surface.default,
-          borderRadius: tokens.borderRadius['2xl'], // 24px
-          boxShadow: '0px 4px 32px 0px rgba(0, 0, 0, 0.12)',
-          padding: tokens.spacing[6], // 24px
+          boxShadow: isMobile ? 'none' : '0px 4px 32px 0px rgba(0, 0, 0, 0.12)',
           display: 'flex',
           flexDirection: 'column',
-          gap: tokens.spacing[6], // 24px
+          gap: isMobile ? tokens.spacing[4] : tokens.spacing[6], // 16px on mobile, 24px on desktop
           zIndex: 1000,
           overflow: 'hidden',
+          boxSizing: 'border-box',
         }}
       >
         {/* Header: Title + Close Button */}
@@ -224,7 +257,7 @@ export default function ContactInfoModal({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: tokens.spacing[4], // 16px
+            gap: isMobile ? tokens.spacing[3] : tokens.spacing[4], // 12px on mobile, 16px on desktop
             alignItems: 'center',
             width: '100%',
           }}
@@ -352,17 +385,18 @@ export default function ContactInfoModal({
           </button>
         </div>
 
-        {/* Content Container: Tabs + Content */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-            minHeight: 0,
-            width: '100%',
-          }}
-        >
+          {/* Content Container: Tabs + Content */}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: isMobile ? '8px' : '12px',
+              minHeight: 0,
+              width: '100%',
+              overflow: 'hidden',
+            }}
+          >
           {/* Tab Switch Group */}
           <div
             style={{
@@ -513,11 +547,11 @@ export default function ContactInfoModal({
                         </p>
                       </div>
 
-                      {/* Media Grid - 4 columns, 97.5px each, 4px gap */}
+                      {/* Media Grid - Responsive: 2 columns on mobile, 4 on desktop */}
                       <div
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: 'repeat(4, 97.5px)',
+                          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 97.5px)',
                           gap: '4px',
                           width: '100%',
                         }}
@@ -527,8 +561,9 @@ export default function ContactInfoModal({
                             key={media.id}
                             style={{
                               position: 'relative',
-                              width: '97.5px',
-                              height: '97.5px',
+                              width: isMobile ? '100%' : '97.5px',
+                              height: isMobile ? 'auto' : '97.5px',
+                              aspectRatio: '1',
                               borderRadius: tokens.borderRadius.base, // 8px
                               overflow: 'hidden',
                               backgroundColor: '#d9d9d9',

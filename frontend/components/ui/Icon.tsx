@@ -39,7 +39,9 @@ export type IconName =
   | 'volume-3'
   | 'user-circle'
   | 'upload'
-  | 'trash';
+  | 'trash'
+  | 'menu'
+  | 'arrow-left';
 
 interface IconProps {
   name: IconName;
@@ -82,6 +84,8 @@ const iconPaths: Record<IconName, string> = {
   upload: 'M7 16a4 4 0 0 1-.88-7.903A5 5 0 1 1 15.9 6L16 6a5 5 0 0 1 1 9.9M15 13l-3-3m0 0l-3 3m3-3v12',
   trash: 'M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v3M4 7h16',
   'chevron-right': 'M9 18l6-6-6-6',
+  menu: 'M4 6h16M4 12h16M4 18h16',
+  'arrow-left': 'M10 19l-7-7m0 0l7-7m-7 7h18',
 };
 
 export default function Icon({ name, size = 16, className = '', color }: IconProps) {

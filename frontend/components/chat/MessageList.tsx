@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import type { ChatSession } from '@/types';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -30,6 +31,7 @@ interface MessageListProps {
   onSelectSession: (sessionId: string) => void;
   onNewMessage: () => void;
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
+  onClose?: () => void;
 }
 
 export default function MessageList({
@@ -37,9 +39,11 @@ export default function MessageList({
   onSelectSession,
   onNewMessage,
   onOpenContextMenu,
+  onClose,
 }: MessageListProps) {
   const { user } = useAuth();
   const { sessions, loading, archiveSession, markUnread } = useSessions(true); // Include archived sessions
+  const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
@@ -202,13 +206,14 @@ export default function MessageList({
         backgroundColor: tokens.colors.surface.default,
         display: 'flex',
         flexDirection: 'column',
-        flex: '0 0 auto',
-        width: tokens.dimensions.messageList.width, // 400px
+        flex: isMobile ? '1 1 auto' : '0 0 auto',
+        width: isMobile ? '100%' : tokens.dimensions.messageList.width, // 400px on desktop, 100% on mobile
         padding: tokens.spacing[6], // 24px
-        borderRadius: tokens.borderRadius['2xl'], // 24px
+        borderRadius: isMobile ? 0 : tokens.borderRadius['2xl'], // No border radius on mobile overlay
         gap: tokens.spacing[6], // 24px
         minHeight: 0,
         overflow: 'hidden',
+        height: isMobile ? '100%' : 'auto',
       }}
     >
       {/* Header */}
@@ -218,12 +223,32 @@ export default function MessageList({
           alignItems: 'center',
           justifyContent: 'space-between',
           width: '100%',
+          gap: tokens.spacing[2],
         }}
       >
+        {isMobile && onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '32px',
+              height: '32px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            <Icon name="x" size={20} color={tokens.colors.icon.secondary} />
+          </button>
+        )}
         <h2
           style={{
             ...tokens.typography.styles.subheadlineSemibold,
             color: tokens.colors.text.neutral.main,
+            flex: 1,
           }}
         >
           All Message
@@ -234,7 +259,7 @@ export default function MessageList({
           icon="pencil-plus"
           onClick={onNewMessage}
         >
-          New Message
+          {isMobile ? '' : 'New Message'}
         </Button>
       </div>
 
@@ -352,11 +377,50 @@ export default function MessageList({
                 }
               }}
             >
+              {/* Unread Indicator - Only visible when selected */}
+              {isSelected && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    width: '60px',
+                    minHeight: '72px', // Match conversation item height
+                    padding: `${tokens.spacing[2]} ${tokens.spacing[2]}`,
+                    backgroundColor: tokens.colors.brand[500],
+                    borderRadius: tokens.borderRadius.lg,
+                    flexShrink: 0,
+                    alignSelf: 'stretch',
+                  }}
+                >
+                  <Icon
+                    name="message-circle-2"
+                    size={18}
+                    color={tokens.colors.text.neutral.white}
+                  />
+                  <span
+                    style={{
+                      ...tokens.typography.styles.labelXSmall,
+                      color: tokens.colors.text.neutral.white,
+                      fontSize: '11px',
+                      lineHeight: '13px',
+                      fontWeight: tokens.typography.fontWeight.medium,
+                      whiteSpace: 'nowrap',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Unread
+                  </span>
+                </div>
+              )}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  width: '100%',
+                  flex: 1,
+                  minWidth: 0,
                   position: 'relative',
                   transform: isSwiped ? `translateX(${swipeOffset}px)` : 'translateX(0)',
                   transition: isSwiped ? 'none' : 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -396,7 +460,8 @@ export default function MessageList({
                     alignItems: 'center',
                     padding: tokens.spacing[3], // 12px
                     borderRadius: tokens.borderRadius.lg, // 12px
-                    width: '100%',
+                    flex: 1,
+                    minWidth: 0,
                     backgroundColor: isSelected
                       ? tokens.colors.background.primary
                       : 'transparent',
@@ -538,43 +603,36 @@ export default function MessageList({
                 </div>
               </div>
             </button>
-            {/* Three-dot menu button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const rect = e.currentTarget.getBoundingClientRect();
-                handleOpenContextMenu(session.id, {
-                  ...e,
-                  clientX: rect.right,
-                  clientY: rect.bottom,
-                } as React.MouseEvent);
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '32px',
-                height: '32px',
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: tokens.borderRadius.base, // 8px
-                opacity: isSelected ? 1 : 0,
-                transition: 'opacity 0.2s ease',
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.opacity = '1';
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelected) {
-                  e.currentTarget.style.opacity = '0';
-                }
-              }}
-            >
-              <Icon name="dots" size={18} color={tokens.colors.icon.secondary} />
-            </button>
               </div>
+              
+              {/* Three-dot menu button - Always visible, outside the swipe container */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  handleOpenContextMenu(session.id, {
+                    ...e,
+                    clientX: rect.right,
+                    clientY: rect.bottom,
+                  } as React.MouseEvent);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderRadius: tokens.borderRadius.base, // 8px
+                  opacity: 1, // Always fully visible
+                  flexShrink: 0,
+                  marginLeft: 'auto', // Push to the right
+                }}
+              >
+                <Icon name="dots" size={18} color={tokens.colors.icon.secondary} />
+              </button>
               
               {/* Mark as Unread Quick Action Button (Left Side) - Only on swipe */}
               {showUnreadButton && (

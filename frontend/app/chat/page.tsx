@@ -19,6 +19,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { tokens } from '@/lib/design-tokens';
 import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import type { User, ChatSession } from '@/types';
 
 // Helper function to get other participant
@@ -40,9 +41,11 @@ export default function ChatPage() {
     deleteSession,
   } = useSessions(true); // Include archived sessions
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>(undefined);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false); // Mobile sidebar toggle
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     position: { x: number; y: number };
@@ -83,14 +86,37 @@ export default function ChatPage() {
 
     if (existingSession) {
       setSelectedSessionId(existingSession.id);
+      // On mobile, hide sidebar when selecting a session
+      if (isMobile) {
+        setShowSidebar(false);
+      }
     } else {
       // Create new session
       const newSession = await createSession(selectedUser.id);
       if (newSession) {
         setSelectedSessionId(newSession.id);
+        // On mobile, hide sidebar when selecting a session
+        if (isMobile) {
+          setShowSidebar(false);
+        }
       }
     }
   };
+
+  const handleSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    // On mobile, hide sidebar when selecting a session
+    if (isMobile) {
+      setShowSidebar(false);
+    }
+  };
+
+  // On mobile, show sidebar when no session is selected
+  useEffect(() => {
+    if (isMobile && !selectedSessionId) {
+      setShowSidebar(true);
+    }
+  }, [isMobile, selectedSessionId]);
 
   const handleOpenContactInfo = () => {
     setShowContactInfo(true);
@@ -123,12 +149,15 @@ export default function ChatPage() {
         width: '100vw',
         backgroundColor: tokens.colors.background.primary,
         overflow: 'hidden',
-        padding: tokens.spacing[3], // 12px
-        gap: tokens.spacing[3], // 12px
+        padding: isMobile ? tokens.spacing[2] : tokens.spacing[3], // 8px on mobile, 12px on desktop
+        gap: isMobile ? tokens.spacing[2] : tokens.spacing[3], // 8px on mobile, 12px on desktop
       }}
     >
       {/* Top Bar */}
-      <TopBar />
+      <TopBar 
+        onToggleSidebar={() => setShowSidebar(!showSidebar)}
+        showSidebar={showSidebar}
+      />
 
       {/* Message List and Chat Window */}
       <div
@@ -138,22 +167,85 @@ export default function ChatPage() {
           gap: tokens.spacing[3], // 12px
           overflow: 'hidden',
           minHeight: 0,
+          position: 'relative',
         }}
       >
-        {/* Message List */}
-        <MessageList
-          selectedSessionId={selectedSessionId}
-          onSelectSession={setSelectedSessionId}
-          onNewMessage={() => setShowNewMessageModal(true)}
-          onOpenContextMenu={handleOpenContextMenu}
-        />
+        {/* Message List - Desktop: always visible, Mobile: overlay */}
+        {/* Keep MessageList always mounted to prevent re-fetching on mobile */}
+        <div
+          style={{
+            ...(isMobile
+              ? {
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 1000,
+                  pointerEvents: showSidebar ? 'auto' : 'none',
+                  opacity: showSidebar ? 1 : 0,
+                  transition: 'opacity 0.3s ease-in-out',
+                }
+              : {
+                  flex: '0 0 auto',
+                }),
+          }}
+        >
+          {isMobile && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: showSidebar ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
+                transition: 'background-color 0.3s ease-in-out',
+              }}
+              onClick={() => setShowSidebar(false)}
+            />
+          )}
+          <div
+            style={{
+              ...(isMobile
+                ? {
+                    position: 'absolute',
+                    width: '85%',
+                    maxWidth: '400px',
+                    height: '100%',
+                    backgroundColor: tokens.colors.surface.default,
+                    boxShadow: '2px 0 8px rgba(0, 0, 0, 0.1)',
+                    transform: showSidebar ? 'translateX(0)' : 'translateX(-100%)',
+                    transition: 'transform 0.3s ease-in-out',
+                  }
+                : {}),
+            }}
+            onClick={(e) => isMobile && e.stopPropagation()}
+          >
+            <MessageList
+              selectedSessionId={selectedSessionId}
+              onSelectSession={handleSelectSession}
+              onNewMessage={() => setShowNewMessageModal(true)}
+              onOpenContextMenu={handleOpenContextMenu}
+              onClose={() => isMobile && setShowSidebar(false)}
+            />
+          </div>
+        </div>
 
         {/* Chat Window */}
-        <ChatWindow 
-          sessionId={selectedSessionId}
-          onOpenContextMenu={handleOpenContextMenu}
-          onOpenContactInfo={handleOpenContactInfo}
-        />
+        {(!isMobile || selectedSessionId) && (
+          <ChatWindow 
+            sessionId={selectedSessionId}
+            onOpenContextMenu={handleOpenContextMenu}
+            onOpenContactInfo={handleOpenContactInfo}
+            onBack={() => {
+              if (isMobile) {
+                setSelectedSessionId(undefined);
+                setShowSidebar(true);
+              }
+            }}
+          />
+        )}
       </div>
 
       {/* New Message Modal */}
