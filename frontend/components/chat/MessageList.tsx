@@ -463,7 +463,7 @@ export default function MessageList({
                   top: '0',
                   width: '80px',
                   height: '100%',
-                  backgroundColor: tokens.colors.text.neutral.sub,
+                  backgroundColor: tokens.colors.brand[500], // Same teal-green as Archive
                   border: 'none',
                   borderRadius: tokens.borderRadius.lg, // 12px
                   cursor: 'pointer',
