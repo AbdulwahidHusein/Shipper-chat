@@ -36,7 +36,7 @@ interface ChatWindowProps {
 export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo }: ChatWindowProps) {
   const { user } = useAuth();
   const { sessions } = useSessions();
-  const { messages, loading, sendMessage: sendMessageApi, markAllRead } = useMessages(sessionId);
+  const { messages, loading, sendMessage: sendMessageApi, markAllRead, markMessageAsRead } = useMessages(sessionId);
   const [messageInput, setMessageInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -49,6 +49,8 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const readMessagesSet = useRef<Set<string>>(new Set());
 
   // Scroll to bottom when messages change - only scroll the message container, not the page
   useEffect(() => {
@@ -60,9 +62,62 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
   // Mark messages as read when session is selected
   useEffect(() => {
     if (sessionId) {
+      // Reset read tracking when session changes
+      readMessagesSet.current.clear();
       markAllRead();
     }
   }, [sessionId, markAllRead]);
+
+  // Real-time read detection: Mark messages as read when they come into view
+  useEffect(() => {
+    if (!sessionId || !user || !messagesContainerRef.current) return;
+
+    const container = messagesContainerRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const messageId = entry.target.getAttribute('data-message-id');
+            if (messageId && !readMessagesSet.current.has(messageId)) {
+              // Find the message
+              const message = messages.find((m) => m.id === messageId);
+              // Only mark as read if it's from another user and not already read
+              if (
+                message &&
+                message.senderId !== user.id &&
+                message.status !== 'READ'
+              ) {
+                readMessagesSet.current.add(messageId);
+                markMessageAsRead(messageId);
+              }
+            }
+          }
+        });
+      },
+      {
+        root: container,
+        rootMargin: '0px',
+        threshold: 0.5, // Mark as read when 50% visible
+      }
+    );
+
+    // Observe all message elements
+    const observeMessages = () => {
+      messageRefs.current.forEach((element) => {
+        if (element) {
+          observer.observe(element);
+        }
+      });
+    };
+
+    // Observe after a small delay to ensure DOM is ready
+    const timeoutId = setTimeout(observeMessages, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [messages, sessionId, user, markMessageAsRead]);
 
   if (!sessionId) {
     return (
@@ -414,6 +469,14 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
           return (
             <div
               key={message.id}
+              ref={(el) => {
+                if (el) {
+                  messageRefs.current.set(message.id, el);
+                } else {
+                  messageRefs.current.delete(message.id);
+                }
+              }}
+              data-message-id={message.id}
               style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -525,12 +588,37 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
                     paddingTop: '4px',
                   }}
                 >
-                  {isCurrentUser && message.isRead && (
-                    <Icon
-                      name="checks"
-                      size={14}
-                      color={tokens.colors.brand[500]}
-                    />
+                  {isCurrentUser && message.status && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: message.status === 'READ' ? '-4px' : '0',
+                      }}
+                    >
+                      {message.status === 'READ' ? (
+                        // Double check marks for read
+                        <>
+                          <Icon
+                            name="checks"
+                            size={14}
+                            color={tokens.colors.brand[500]}
+                          />
+                          <Icon
+                            name="checks"
+                            size={14}
+                            color={tokens.colors.brand[500]}
+                          />
+                        </>
+                      ) : message.status === 'DELIVERED' || message.status === 'SENT' ? (
+                        // Single check mark for delivered/sent
+                        <Icon
+                          name="checks"
+                          size={14}
+                          color={tokens.colors.text.placeholder}
+                        />
+                      ) : null}
+                    </div>
                   )}
                   <p
                     style={{

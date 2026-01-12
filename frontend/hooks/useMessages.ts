@@ -17,6 +17,7 @@ interface UseMessagesReturn {
   loadMore: () => Promise<void>;
   sendMessage: (content: string, type?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'FILE' | 'LINK') => Promise<Message | null>;
   markAllRead: () => Promise<void>;
+  markMessageAsRead: (messageId: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -173,6 +174,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
               ...msg,
               status: data.status,
               readAt: data.readAt ? new Date(data.readAt) : msg.readAt,
+              isRead: data.status === 'READ',
             };
           }
           return msg;
@@ -257,15 +259,52 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
     [sessionId, isConnected, emit, user]
   );
 
+  const markMessageAsRead = useCallback(async (messageId: string) => {
+    if (!sessionId) return;
+
+    try {
+      // Use WebSocket if connected for real-time updates
+      if (isConnected) {
+        emit('message:read', { messageId });
+      } else {
+        await messageApi.markRead(messageId);
+      }
+      
+      // Update local message status (optimistic update)
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === messageId) {
+            return {
+              ...msg,
+              status: 'READ' as const,
+              isRead: true,
+              readAt: msg.readAt || new Date(),
+            };
+          }
+          return msg;
+        })
+      );
+    } catch (err) {
+      // Silent error handling
+    }
+  }, [sessionId, isConnected, emit]);
+
   const markAllRead = useCallback(async () => {
     if (!sessionId) return;
 
     try {
-      await messageApi.markAllRead(sessionId);
-      // Update local messages to reflect read status
+      // Use WebSocket if connected for real-time updates, otherwise fallback to REST
+      if (isConnected) {
+        emit('messages:markAllRead', { sessionId });
+      } else {
+        await messageApi.markAllRead(sessionId);
+      }
+      
+      // Update local messages to reflect read status (optimistic update)
       setMessages((prev) =>
         prev.map((msg) => ({
           ...msg,
+          status: 'READ' as const,
           isRead: true,
           readAt: msg.readAt || new Date(),
         }))
@@ -273,7 +312,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
     } catch (err) {
       // Silent error handling
     }
-  }, [sessionId]);
+  }, [sessionId, isConnected, emit]);
 
   return {
     messages,
@@ -283,6 +322,7 @@ export function useMessages(sessionId: string | undefined): UseMessagesReturn {
     loadMore,
     sendMessage,
     markAllRead,
+    markMessageAsRead,
     refresh: () => fetchMessages(true),
   };
 }

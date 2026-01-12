@@ -27,6 +27,7 @@ export interface ClientToServerEvents {
 
   'message:delivered': (data: { messageId: string }) => void;
   'message:read': (data: { messageId: string }) => void;
+  'messages:markAllRead': (data: { sessionId: string }) => void;
 
   // Presence events
   'presence:online': () => void;

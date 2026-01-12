@@ -480,7 +480,29 @@ export default function MessageList({
                   >
                     {session.lastMessage?.content || 'No messages yet'}
                   </p>
-                  {hasUnread && (
+                  {/* Show read status if last message is from current user and is read */}
+                  {session.lastMessage?.senderId === user?.id && session.lastMessage?.status === 'READ' && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '-4px',
+                      }}
+                    >
+                      <Icon
+                        name="checks"
+                        size={14}
+                        color={tokens.colors.brand[500]}
+                      />
+                      <Icon
+                        name="checks"
+                        size={14}
+                        color={tokens.colors.brand[500]}
+                      />
+                    </div>
+                  )}
+                  {/* Show unread indicator if there are unread messages */}
+                  {hasUnread && session.lastMessage?.senderId !== user?.id && (
                     <Icon
                       name="checks"
                       size={16}

@@ -46,6 +46,9 @@ export function useSessions(includeArchived: boolean = false): UseSessionsReturn
                 readAt: session.lastMessage.readAt
                   ? new Date(session.lastMessage.readAt)
                   : undefined,
+                type: session.lastMessage.type || 'TEXT',
+                status: session.lastMessage.status || 'SENT',
+                isRead: session.lastMessage.status === 'READ',
               }
             : undefined,
           createdAt: new Date(session.createdAt),
@@ -111,12 +114,35 @@ export function useSessions(includeArchived: boolean = false): UseSessionsReturn
       });
     };
 
+    // Listen for message status updates to update lastMessage read status
+    const handleMessageStatus = (data: any) => {
+      setSessions((prev) =>
+        prev.map((session) => {
+          // If the updated message is the last message, update its status
+          if (session.lastMessage?.id === data.messageId) {
+            return {
+              ...session,
+              lastMessage: {
+                ...session.lastMessage,
+                status: data.status,
+                readAt: data.readAt ? new Date(data.readAt) : session.lastMessage.readAt,
+                isRead: data.status === 'READ',
+              },
+            };
+          }
+          return session;
+        })
+      );
+    };
+
     const unsubscribeUpdate = on('session:update', handleSessionUpdate);
     const unsubscribeNew = on('session:new', handleSessionNew);
+    const unsubscribeMessageStatus = on('message:status', handleMessageStatus);
 
     return () => {
       unsubscribeUpdate();
       unsubscribeNew();
+      unsubscribeMessageStatus();
     };
   }, [isConnected, on]);
 

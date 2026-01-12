@@ -197,12 +197,36 @@ export const setupSocketHandlers = (io: SocketServer) => {
       try {
         const message = await markMessageAsRead(data.messageId, userId);
 
-        // Notify sender that message was read
-        if (message.senderId !== userId) {
-          io.to(getUserRoom(message.senderId)).emit('message:status', {
-            messageId: data.messageId,
-            status: 'READ',
-            readAt: message.readAt?.toISOString(),
+        // Notify sender that their message was read (sender is always different from reader)
+        // markMessageAsRead already validates that senderId !== userId
+        io.to(getUserRoom(message.senderId)).emit('message:status', {
+          messageId: data.messageId,
+          status: 'READ',
+          readAt: message.readAt?.toISOString(),
+        });
+      } catch (error) {
+        // Silent error handling
+      }
+    });
+
+    /**
+     * Handle mark all messages as read (via WebSocket for real-time)
+     */
+    socket.on('messages:markAllRead', async (data) => {
+      try {
+        const { markMessagesAsRead } = await import('../services/message.service');
+        const messagesMarked = await markMessagesAsRead(data.sessionId, userId);
+
+        // Emit real-time events to notify senders
+        if (messagesMarked.length > 0) {
+          const readAt = new Date().toISOString();
+          messagesMarked.forEach((message) => {
+            // Notify the sender that their message was read
+            io.to(getUserRoom(message.senderId)).emit('message:status', {
+              messageId: message.id,
+              status: 'READ',
+              readAt,
+            });
           });
         }
       } catch (error) {

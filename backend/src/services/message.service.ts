@@ -207,6 +207,24 @@ export const markMessagesAsRead = async (
     throw new Error('Unauthorized');
   }
 
+  // Get all messages that will be marked as read (before updating)
+  const messagesToMark = await prisma.message.findMany({
+    where: {
+      sessionId,
+      senderId: {
+        not: userId, // Only messages from other participant
+      },
+      status: {
+        not: MessageStatus.READ,
+      },
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      senderId: true,
+    },
+  });
+
   // Mark all unread messages as read
   await prisma.message.updateMany({
     where: {
@@ -227,6 +245,9 @@ export const markMessagesAsRead = async (
 
   // Reset unread count
   await resetUnreadCount(sessionId, userId);
+
+  // Return messages that were marked as read (for WebSocket notifications)
+  return messagesToMark;
 };
 
 export const markMessageAsDelivered = async (id: string) => {

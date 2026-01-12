@@ -16,6 +16,7 @@ import {
   clearSessionMessages,
 } from '../services/message.service';
 import { sendSuccess, sendError } from '../utils/responses';
+import { getSocketIO } from '../socket/socket.server';
 
 const createMessageSchema = z.object({
   content: z.string().min(1, 'Message content is required').max(5000),
@@ -180,7 +181,21 @@ export const markAllRead = async (req: Request, res: Response): Promise<void> =>
     }
 
     const { sessionId } = req.params;
-    await markMessagesAsRead(sessionId, req.user.id);
+    const messagesMarked = await markMessagesAsRead(sessionId, req.user.id);
+
+    // Emit real-time WebSocket events to notify senders
+    const io = getSocketIO();
+    if (io && messagesMarked.length > 0) {
+      const readAt = new Date().toISOString();
+      messagesMarked.forEach((message) => {
+        // Notify the sender that their message was read
+        io.to(`user:${message.senderId}`).emit('message:status', {
+          messageId: message.id,
+          status: 'READ',
+          readAt,
+        });
+      });
+    }
 
     sendSuccess(res, null, 'All messages marked as read');
   } catch (error: any) {
