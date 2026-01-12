@@ -7,16 +7,16 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
+# Install dependencies (including Prisma CLI)
 RUN npm ci
+
+# Generate Prisma Client (must happen before TypeScript compilation)
+RUN npx prisma generate
 
 # Copy source code
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Build TypeScript
+# Build TypeScript (Prisma types are now available)
 RUN npm run build
 
 # Production stage
