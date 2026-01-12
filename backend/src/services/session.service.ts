@@ -168,6 +168,10 @@ export const createSession = async (data: CreateSessionData) => {
   );
 
   if (existing) {
+    // If session is archived, unarchive it when user tries to start a new chat
+    if (existing.isArchived) {
+      return updateSession(existing.id, { isArchived: false });
+    }
     return existing;
   }
 

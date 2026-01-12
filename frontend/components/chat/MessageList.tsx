@@ -39,7 +39,7 @@ export default function MessageList({
   onOpenContextMenu,
 }: MessageListProps) {
   const { user } = useAuth();
-  const { sessions, loading, archiveSession, markUnread } = useSessions();
+  const { sessions, loading, archiveSession, markUnread } = useSessions(true); // Include archived sessions
   const [searchQuery, setSearchQuery] = useState('');
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
@@ -321,6 +321,7 @@ export default function MessageList({
             const otherParticipant = getOtherParticipant(session, user.id);
           const isSelected = selectedSessionId === session.id;
           const hasUnread = (session.unreadCount || 0) > 0;
+          const isArchived = session.isArchived || false;
 
           const isHovered = hoveredSessionId === session.id;
           const isSwiped = swipedSessionId === session.id;
@@ -404,6 +405,7 @@ export default function MessageList({
                     textAlign: 'left',
                     transition: 'background-color 0.2s ease',
                     flexShrink: 0,
+                    opacity: isArchived ? 0.6 : 1,
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) {
@@ -438,17 +440,39 @@ export default function MessageList({
                     width: '100%',
                   }}
                 >
-                  <p
+                  <div
                     style={{
-                      ...tokens.typography.styles.labelSmall,
-                      color: tokens.colors.text.heading.primary,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: tokens.spacing[2],
                     }}
                   >
-                    {otherParticipant?.name}
-                  </p>
+                    <p
+                      style={{
+                        ...tokens.typography.styles.labelSmall,
+                        color: isArchived
+                          ? tokens.colors.text.placeholder
+                          : tokens.colors.text.heading.primary,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {otherParticipant?.name}
+                    </p>
+                    {isArchived && (
+                      <span
+                        style={{
+                          ...tokens.typography.styles.paragraphXSmall,
+                          color: tokens.colors.text.placeholder,
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Archived
+                      </span>
+                    )}
+                  </div>
                   <p
                     style={{
                       ...tokens.typography.styles.paragraphXSmall,
@@ -471,7 +495,9 @@ export default function MessageList({
                   <p
                     style={{
                       ...tokens.typography.styles.paragraphXSmall,
-                      color: tokens.colors.text.placeholder,
+                      color: isArchived
+                        ? tokens.colors.text.placeholder
+                        : tokens.colors.text.placeholder,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',

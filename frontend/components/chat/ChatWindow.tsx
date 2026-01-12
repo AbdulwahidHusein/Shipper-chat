@@ -57,7 +57,7 @@ interface ChatWindowProps {
 
 export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo }: ChatWindowProps) {
   const { user } = useAuth();
-  const { sessions } = useSessions();
+  const { sessions } = useSessions(true); // Include archived sessions
   const { messages, loading, sendMessage: sendMessageApi, markAllRead, markMessageAsRead } = useMessages(sessionId);
   const { isConnected, emit } = useSocket();
   const [messageInput, setMessageInput] = useState('');
@@ -274,6 +274,7 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
       <ChatHeader
         participant={otherParticipant}
         sessionId={sessionId}
+        isArchived={session.isArchived || false}
         onOpenContactInfo={onOpenContactInfo}
         onOpenContextMenu={onOpenContextMenu}
       />

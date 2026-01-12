@@ -188,10 +188,37 @@ export function useSessions(includeArchived: boolean = false): UseSessionsReturn
             ...response.data,
             participant1: response.data.participant1,
             participant2: response.data.participant2,
+            lastMessage: response.data.lastMessage
+              ? {
+                  ...response.data.lastMessage,
+                  createdAt: new Date(response.data.lastMessage.createdAt),
+                  readAt: response.data.lastMessage.readAt
+                    ? new Date(response.data.lastMessage.readAt)
+                    : undefined,
+                  type: response.data.lastMessage.type || 'TEXT',
+                  status: response.data.lastMessage.status || 'SENT',
+                  isRead: response.data.lastMessage.status === 'READ',
+                }
+              : undefined,
             createdAt: new Date(response.data.createdAt),
             updatedAt: new Date(response.data.updatedAt),
+            isArchived: false, // Ensure it's not archived after unarchiving
           };
-          await fetchSessions();
+          
+          // Add session to local state immediately (optimistic update)
+          setSessions((prev) => {
+            // Avoid duplicates
+            if (prev.some((s) => s.id === newSession.id)) {
+              return prev.map((s) => (s.id === newSession.id ? newSession : s));
+            }
+            return [newSession, ...prev];
+          });
+          
+          // Refresh sessions in background to ensure consistency
+          fetchSessions().catch(() => {
+            // Ignore errors - we already have the session in state
+          });
+          
           return newSession as ChatSession;
         }
         return null;

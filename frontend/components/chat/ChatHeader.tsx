@@ -8,6 +8,7 @@ import type { User } from '@/types';
 interface ChatHeaderProps {
   participant?: User;
   sessionId?: string;
+  isArchived?: boolean;
   onOpenContactInfo?: () => void;
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
 }
@@ -15,6 +16,7 @@ interface ChatHeaderProps {
 export default function ChatHeader({
   participant,
   sessionId,
+  isArchived = false,
   onOpenContactInfo,
   onOpenContextMenu,
 }: ChatHeaderProps) {
@@ -51,14 +53,39 @@ export default function ChatHeader({
           flex: 1,
         }}
       >
-        <p
+        <div
           style={{
-            ...tokens.typography.styles.labelSmall,
-            color: tokens.colors.text.neutral.main,
+            display: 'flex',
+            alignItems: 'center',
+            gap: tokens.spacing[2],
           }}
         >
-          {participant?.name}
-        </p>
+          <p
+            style={{
+              ...tokens.typography.styles.labelSmall,
+              color: isArchived
+                ? tokens.colors.text.placeholder
+                : tokens.colors.text.neutral.main,
+            }}
+          >
+            {participant?.name}
+          </p>
+          {isArchived && (
+            <span
+              style={{
+                ...tokens.typography.styles.paragraphXSmall,
+                color: tokens.colors.text.placeholder,
+                fontSize: '10px',
+                textTransform: 'uppercase',
+                padding: `2px ${tokens.spacing[2]}`,
+                backgroundColor: tokens.colors.surface.weak,
+                borderRadius: tokens.borderRadius.base,
+              }}
+            >
+              Archived
+            </span>
+          )}
+        </div>
         <p
           style={{
             ...tokens.typography.styles.paragraphXSmall,

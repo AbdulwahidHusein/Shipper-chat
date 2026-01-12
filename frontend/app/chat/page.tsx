@@ -38,7 +38,7 @@ export default function ChatPage() {
     muteSession,
     markUnread,
     deleteSession,
-  } = useSessions();
+  } = useSessions(true); // Include archived sessions
   const router = useRouter();
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>(undefined);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
@@ -207,10 +207,10 @@ export default function ChatPage() {
         isOpen={showContactInfo}
         user={
           selectedSessionId && user
-            ? getOtherParticipant(
-                sessions.find((s) => s.id === selectedSessionId)!,
-                user.id
-              )
+            ? (() => {
+                const session = sessions.find((s) => s.id === selectedSessionId);
+                return session ? getOtherParticipant(session, user.id) : undefined;
+              })()
             : undefined
         }
         sessionId={selectedSessionId}
