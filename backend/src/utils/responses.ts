@@ -50,5 +50,5 @@ export const getAuthenticatedUser = (req: Request, res: Response): User | null =
     sendError(res, 'User not authenticated', 'UNAUTHORIZED', 401);
     return null;
   }
-  return req.user;
+  return req.user as User;
 };
