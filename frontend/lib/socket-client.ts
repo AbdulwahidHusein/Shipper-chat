@@ -51,11 +51,22 @@ class SocketClient {
       this.status = 'connected';
       this.reconnectAttempts = 0;
       this.emitStatusChange('connected');
+      
+      // Automatically set user online when connected
+      if (this.socket?.connected) {
+        this.socket.emit('presence:online', {});
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
       this.status = 'disconnected';
       this.emitStatusChange('disconnected');
+      
+      // Automatically set user offline when disconnected (if not reconnecting)
+      if (reason === 'io server disconnect' || reason === 'io client disconnect') {
+        // Only emit offline if it's a deliberate disconnect, not a reconnection attempt
+        // The backend will handle offline status on actual disconnect
+      }
     });
 
     this.socket.on('connect_error', (error: any) => {

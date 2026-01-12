@@ -135,14 +135,47 @@ export function useSessions(includeArchived: boolean = false): UseSessionsReturn
       );
     };
 
+    // Listen for presence updates to update session participants' online status
+    const handlePresenceUpdate = (data: any) => {
+      setSessions((prev) =>
+        prev.map((session) => {
+          // Update participant1 online status
+          if (session.participant1?.id === data.userId) {
+            return {
+              ...session,
+              participant1: {
+                ...session.participant1,
+                isOnline: data.isOnline,
+                lastSeen: new Date(data.lastSeen),
+              },
+            };
+          }
+          // Update participant2 online status
+          if (session.participant2?.id === data.userId) {
+            return {
+              ...session,
+              participant2: {
+                ...session.participant2,
+                isOnline: data.isOnline,
+                lastSeen: new Date(data.lastSeen),
+              },
+            };
+          }
+          return session;
+        })
+      );
+    };
+
     const unsubscribeUpdate = on('session:update', handleSessionUpdate);
     const unsubscribeNew = on('session:new', handleSessionNew);
     const unsubscribeMessageStatus = on('message:status', handleMessageStatus);
+    const unsubscribePresence = on('presence:update', handlePresenceUpdate);
 
     return () => {
       unsubscribeUpdate();
       unsubscribeNew();
       unsubscribeMessageStatus();
+      unsubscribePresence();
     };
   }, [isConnected, on]);
 

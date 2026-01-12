@@ -70,6 +70,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loading]);
 
+  // Handle page visibility for online/offline status (smart detection)
+  useEffect(() => {
+    if (!user) return;
+
+    let visibilityTimeout: NodeJS.Timeout | null = null;
+
+    const handleVisibilityChange = () => {
+      if (!socketClient.isConnected()) return;
+
+      // Clear any pending timeout
+      if (visibilityTimeout) {
+        clearTimeout(visibilityTimeout);
+      }
+
+      if (document.hidden) {
+        // Page is hidden - set offline after short delay (to handle quick tab switches)
+        visibilityTimeout = setTimeout(() => {
+          if (document.hidden && socketClient.isConnected()) {
+            socketClient.emit('presence:offline', {});
+          }
+        }, 2000); // 2 second delay to avoid flickering on quick tab switches
+      } else {
+        // Page is visible - immediately set online
+        socketClient.emit('presence:online', {});
+      }
+    };
+
+    // Handle when page becomes visible/hidden
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (visibilityTimeout) {
+        clearTimeout(visibilityTimeout);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
+
   const login = () => {
     const authUrl = authApi.getGoogleAuthUrl();
     window.location.href = authUrl;
