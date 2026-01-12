@@ -19,7 +19,7 @@ import { initializeSocket } from './socket/socket.server';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Middleware
@@ -59,8 +59,8 @@ const httpServer = createServer(app);
 initializeSocket(httpServer, FRONTEND_URL);
 
 // Start server
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+httpServer.listen({ port: PORT, host: '0.0.0.0' }, () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📡 Frontend URL: ${FRONTEND_URL}`);
   console.log(`🔐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔌 WebSocket server ready`);
