@@ -15,6 +15,7 @@ import {
 } from '../controllers/message.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
+
 const router = Router();
 
 // All routes require authentication
