@@ -9,9 +9,10 @@ import { useState } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import Icon from '@/components/ui/Icon';
 import Avatar from '@/components/ui/Avatar';
-import { currentUser } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Sidebar() {
+  const { user } = useAuth();
   const [activeItem, setActiveItem] = useState<'home' | 'chat' | 'compass' | 'folder' | 'images'>('chat');
 
   const menuItems = [
@@ -150,8 +151,8 @@ export default function Sidebar() {
 
         {/* User Avatar */}
         <Avatar
-          src={currentUser.picture}
-          name={currentUser.name}
+          src={user?.picture}
+          name={user?.name}
           size="md"
           className="cursor-pointer"
         />

@@ -9,9 +9,11 @@ import { tokens } from '@/lib/design-tokens';
 import Icon from '@/components/ui/Icon';
 import Input from '@/components/ui/Input';
 import Avatar from '@/components/ui/Avatar';
-import { currentUser } from '@/data/mockData';
+import Dropdown from '@/components/ui/Dropdown';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TopBar() {
+  const { user, logout } = useAuth();
   return (
     <div
       style={{
@@ -126,29 +128,48 @@ export default function TopBar() {
           />
 
           {/* Profile */}
-          <div
-            style={{
-              display: 'flex',
-              gap: tokens.spacing[2], // 8px
-              alignItems: 'center',
-            }}
-          >
-            <Avatar src={currentUser.picture} name={currentUser.name} size="sm" />
-            <button
-              style={{
-                width: '16px',
-                height: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                border: 'none',
-                backgroundColor: 'transparent',
-              }}
-            >
-              <Icon name="chevron-down" size={16} color={tokens.colors.icon.secondary} />
-            </button>
-          </div>
+          <Dropdown
+            align="right"
+            trigger={
+              <div
+                style={{
+                  display: 'flex',
+                  gap: tokens.spacing[2], // 8px
+                  alignItems: 'center',
+                }}
+              >
+                <Avatar src={user?.picture} name={user?.name} size="sm" />
+                <Icon name="chevron-down" size={16} color={tokens.colors.icon.secondary} />
+              </div>
+            }
+            items={[
+              {
+                id: 'profile',
+                label: 'Profile',
+                icon: 'user-circle',
+                onClick: () => {
+                  // TODO: Open profile modal
+                  console.log('Profile clicked');
+                },
+              },
+              {
+                id: 'settings',
+                label: 'Settings',
+                icon: 'settings',
+                onClick: () => {
+                  // TODO: Open settings
+                  console.log('Settings clicked');
+                },
+              },
+              {
+                id: 'logout',
+                label: 'Logout',
+                icon: 'logout',
+                onClick: logout,
+                isDestructive: true,
+              },
+            ]}
+          />
         </div>
       </div>
     </div>

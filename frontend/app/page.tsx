@@ -1,5 +1,22 @@
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
-  redirect('/chat');
+  const router = useRouter();
+  const { isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      if (isAuthenticated) {
+        router.push('/chat');
+      } else {
+        router.push('/login');
+      }
+    }
+  }, [isAuthenticated, loading, router]);
+
+  return null;
 }

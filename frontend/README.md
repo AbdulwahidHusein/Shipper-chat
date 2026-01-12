@@ -1,36 +1,120 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shipper Frontend
+
+Frontend for Shipper chat application built with Next.js 16, React 19, and TypeScript.
+
+## Features
+
+- ✅ Google OAuth Authentication
+- ✅ Clean, centralized API client
+- ✅ Protected routes
+- ✅ Real-time chat UI (ready for WebSocket integration)
+- ✅ Contact Info modal with Media/Links/Docs tabs
+- ✅ Professional, scalable architecture
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Create `.env.local` file:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+```
+
+### 3. Start Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### API Client (`lib/api-client.ts`)
 
-## Learn More
+Centralized API communication layer:
+- Automatic cookie handling (credentials: 'include')
+- Standardized error handling
+- Type-safe responses
+- Easy to extend for new endpoints
 
-To learn more about Next.js, take a look at the following resources:
+### Authentication (`contexts/AuthContext.tsx`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Clean auth state management:
+- `useAuth()` hook for accessing user data
+- Automatic auth checking on mount
+- Login/logout functions
+- Protected route wrapper
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Protected Routes
 
-## Deploy on Vercel
+Use `<ProtectedRoute>` component to protect pages:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```tsx
+<ProtectedRoute>
+  <YourComponent />
+</ProtectedRoute>
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## API Integration
+
+### Using the API Client
+
+```typescript
+import { authApi, userApi } from '@/lib/api-client';
+
+// Get current user
+const response = await authApi.getCurrentUser();
+if (response.success) {
+  const user = response.data;
+}
+
+// Update profile
+const updateResponse = await userApi.updateProfile({
+  name: 'New Name',
+});
+```
+
+## Authentication Flow
+
+1. User clicks "Sign in with Google" → Redirects to backend OAuth
+2. Backend handles Google OAuth → Sets JWT cookie
+3. Backend redirects to frontend with `?auth=success`
+4. Frontend refreshes user data → User is authenticated
+5. All API calls automatically include JWT cookie
+
+## Project Structure
+
+```
+frontend/
+├── app/                    # Next.js app router
+│   ├── login/             # Login page
+│   └── chat/              # Chat page (protected)
+├── components/
+│   ├── auth/             # Auth components
+│   ├── chat/             # Chat components
+│   ├── modals/           # Modal components
+│   └── ui/               # Reusable UI components
+├── contexts/              # React contexts
+│   └── AuthContext.tsx   # Auth state management
+├── lib/
+│   ├── api-client.ts     # Centralized API client
+│   └── design-tokens.ts # Design system tokens
+└── types/                # TypeScript types
+```
+
+## Tech Stack
+
+- **Framework**: Next.js 16.1.1
+- **React**: 19.2.3
+- **TypeScript**: 5.x
+- **Styling**: Tailwind CSS 4 + Design Tokens
+- **State**: React Context API
+- **API**: Fetch API with centralized client

@@ -6,18 +6,24 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import TopBar from '@/components/chat/TopBar';
 import MessageList from '@/components/chat/MessageList';
 import ChatWindow from '@/components/chat/ChatWindow';
 import NewMessageModal from '@/components/modals/NewMessageModal';
 import ChatContextMenu from '@/components/modals/ChatContextMenu';
 import ContactInfoModal from '@/components/modals/ContactInfoModal';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { tokens } from '@/lib/design-tokens';
 import { mockUsers, mockSessions, getOtherParticipant } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 import type { User } from '@/types';
 
 export default function ChatPage() {
+  const { user, loading, refreshUser } = useAuth();
+  const router = useRouter();
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>('session1');
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [showContactInfo, setShowContactInfo] = useState(false);
@@ -30,6 +36,16 @@ export default function ChatPage() {
     position: { x: 0, y: 0 },
     sessionId: '',
   });
+
+  useEffect(() => {
+    // Handle OAuth callback success
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auth') === 'success') {
+      // Refresh user data after successful auth
+      refreshUser();
+      window.history.replaceState({}, '', '/chat');
+    }
+  }, [refreshUser]);
 
   const handleOpenContextMenu = (sessionId: string, position: { x: number; y: number }) => {
     setContextMenu({
@@ -60,8 +76,26 @@ export default function ChatPage() {
     setShowContactInfo(true);
   };
 
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          width: '100vw',
+          backgroundColor: tokens.colors.background.primary,
+        }}
+      >
+        <LoadingSpinner size="lg" message="Loading..." />
+      </div>
+    );
+  }
+
   return (
-    <div
+    <ProtectedRoute>
+      <div
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -154,6 +188,7 @@ export default function ChatPage() {
           console.log('Video call');
         }}
       />
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
