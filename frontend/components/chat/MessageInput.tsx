@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import Icon from '@/components/ui/Icon';
+import EmojiPicker from '@/components/ui/EmojiPicker';
 
 interface MessageInputProps {
   value: string;
@@ -21,12 +22,45 @@ export default function MessageInput({
   uploading,
   hasPreview,
 }: MessageInputProps) {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  const handleEmojiSelect = (emoji: string) => {
+    onChange(value + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showEmojiPicker &&
+        emojiPickerRef.current &&
+        emojiButtonRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node) &&
+        !emojiButtonRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
+
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
         paddingTop: tokens.spacing[2], // 8px
+        position: 'relative',
       }}
     >
       <div
@@ -72,9 +106,33 @@ export default function MessageInput({
             alignItems: 'center',
           }}
         >
-          {['microphone', 'emoji'].map((iconName) => (
+          {/* Microphone button */}
+          <button
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
+              padding: '8px 10px',
+              borderRadius: tokens.borderRadius.full,
+              border: 'none',
+              backgroundColor: 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            <Icon
+              name="microphone"
+              size={14}
+              color={tokens.colors.icon.secondary}
+            />
+          </button>
+
+          {/* Emoji button with picker */}
+          <div ref={emojiPickerRef} style={{ position: 'relative' }}>
             <button
-              key={iconName}
+              ref={emojiButtonRef}
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -84,17 +142,23 @@ export default function MessageInput({
                 padding: '8px 10px',
                 borderRadius: tokens.borderRadius.full,
                 border: 'none',
-                backgroundColor: 'transparent',
+                backgroundColor: showEmojiPicker ? tokens.colors.surface.weak : 'transparent',
                 cursor: 'pointer',
               }}
             >
               <Icon
-                name={iconName as any}
+                name="emoji"
                 size={14}
                 color={tokens.colors.icon.secondary}
               />
             </button>
-          ))}
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelect={handleEmojiSelect}
+                onClose={() => setShowEmojiPicker(false)}
+              />
+            )}
+          </div>
           <button
             onClick={onAttach}
             disabled={uploading}
