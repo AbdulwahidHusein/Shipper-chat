@@ -32,7 +32,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY package*.json ./
 
 # Install ALL dependencies (Next.js needs full node_modules)
-RUN npm install --production=false
+RUN npm install
 
 # Copy built application from builder
 COPY --from=builder /app/.next ./.next
@@ -47,5 +47,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080), (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start the server with explicit PORT
-CMD ["sh", "-c", "next start -p ${PORT:-8080}"]
+# Start the server (npm start will use PORT from env var via package.json script)
+CMD ["npm", "start"]
