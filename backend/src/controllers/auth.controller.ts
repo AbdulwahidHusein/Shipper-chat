@@ -31,10 +31,11 @@ export const googleCallback = async (
       // Set token in httpOnly cookie
       res.cookie('token', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true, // Always true for HTTPS (Cloud Run uses HTTPS)
+        sameSite: 'none', // Required for cross-origin cookies
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: '/', // Ensure cookie is available for all paths
+        domain: undefined, // Let browser set domain automatically
       });
 
       // Redirect to frontend
@@ -88,9 +89,10 @@ export const refreshToken = async (req: Request, res: Response): Promise<void> =
 
   res.cookie('token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: true, // Always true for HTTPS
+    sameSite: 'none', // Required for cross-origin cookies
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/',
   });
 
   sendSuccess(res, null, 'Token refreshed successfully');
