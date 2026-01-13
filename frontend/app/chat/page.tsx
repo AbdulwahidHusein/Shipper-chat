@@ -103,6 +103,39 @@ export default function ChatPage() {
     }
   };
 
+  const handleStartAIChat = async () => {
+    if (!user) return;
+
+    try {
+      // Check if AI session already exists
+      const existingAISession = sessions.find(
+        (session) => session.type === 'AI' && 
+        (session.participant1Id === user.id || session.participant2Id === user.id)
+      );
+
+      if (existingAISession) {
+        setSelectedSessionId(existingAISession.id);
+        if (isMobile) {
+          setShowSidebar(false);
+        }
+        return;
+      }
+
+      // Create new AI session
+      const { sessionApi } = await import('@/lib/api-client');
+      const response = await sessionApi.createSession({ type: 'AI' });
+      
+      if (response.success && response.data) {
+        setSelectedSessionId(response.data.id);
+        if (isMobile) {
+          setShowSidebar(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to start AI chat:', error);
+    }
+  };
+
   const handleSelectSession = (sessionId: string) => {
     setSelectedSessionId(sessionId);
     // On mobile, hide sidebar when selecting a session
@@ -229,6 +262,7 @@ export default function ChatPage() {
               selectedSessionId={selectedSessionId}
               onSelectSession={handleSelectSession}
               onNewMessage={() => setShowNewMessageModal(true)}
+              onStartAIChat={handleStartAIChat}
               onOpenContextMenu={handleOpenContextMenu}
               onClose={() => isMobile && setShowSidebar(false)}
             />

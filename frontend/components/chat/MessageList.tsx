@@ -30,6 +30,7 @@ interface MessageListProps {
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
   onNewMessage: () => void;
+  onStartAIChat?: () => void;
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
   onClose?: () => void;
 }
@@ -38,6 +39,7 @@ export default function MessageList({
   selectedSessionId,
   onSelectSession,
   onNewMessage,
+  onStartAIChat,
   onOpenContextMenu,
   onClose,
 }: MessageListProps) {
@@ -299,14 +301,35 @@ export default function MessageList({
         >
           All Message
         </h2>
-        <Button
-          variant="primary"
-          size="sm"
-          icon="pencil-plus"
-          onClick={onNewMessage}
+        <div
+          style={{
+            display: 'flex',
+            gap: tokens.spacing[2],
+            alignItems: 'center',
+          }}
         >
-          {isMobile ? '' : 'New Message'}
-        </Button>
+          {onStartAIChat && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon="sparkles"
+              onClick={onStartAIChat}
+              style={{
+                backgroundColor: tokens.colors.brand[500],
+              }}
+            >
+              {isMobile ? '' : 'AI Chat'}
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            size="sm"
+            icon="pencil-plus"
+            onClick={onNewMessage}
+          >
+            {isMobile ? '' : 'New Message'}
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filter */}

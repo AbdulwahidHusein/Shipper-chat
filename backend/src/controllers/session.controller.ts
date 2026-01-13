@@ -19,8 +19,18 @@ import {
 import { sendSuccess, sendError } from '../utils/responses';
 
 const createSessionSchema = z.object({
-  participant2Id: z.string().min(1, 'Participant ID is required'),
+  participant2Id: z.string().optional(),
   type: z.enum(['DIRECT', 'GROUP', 'AI']).optional(),
+}).refine((data) => {
+  // For AI sessions, participant2Id is not required
+  if (data.type === 'AI') {
+    return true;
+  }
+  // For other session types, participant2Id is required
+  return data.participant2Id && data.participant2Id.length > 0;
+}, {
+  message: 'Participant ID is required for non-AI sessions',
+  path: ['participant2Id'],
 });
 
 const updateSessionSchema = z.object({
@@ -92,7 +102,28 @@ export const startSession = async (req: Request, res: Response): Promise<void> =
 
     const { participant2Id, type } = validation.data;
 
-    // Prevent self-chat
+    // Handle AI session creation
+    if (type === 'AI') {
+      const { getOrCreateAIUser, getAIUserId } = await import('../services/ai-user.service');
+      await getOrCreateAIUser(); // Ensure AI user exists
+      
+      const session = await createSession({
+        participant1Id: req.user.id,
+        participant2Id: getAIUserId(),
+        type: 'AI',
+      });
+
+      sendSuccess(res, session, 'AI session created', 201);
+      return;
+    }
+
+    // For non-AI sessions, participant2Id is required
+    if (!participant2Id || participant2Id.length === 0) {
+      sendError(res, 'Participant ID is required for non-AI sessions', 'VALIDATION_ERROR', 400);
+      return;
+    }
+
+    // Prevent self-chat for regular sessions
     if (participant2Id === req.user.id) {
       sendError(res, 'Cannot start session with yourself', 'INVALID_INPUT', 400);
       return;

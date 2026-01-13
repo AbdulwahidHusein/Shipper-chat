@@ -41,7 +41,8 @@ export type IconName =
   | 'upload'
   | 'trash'
   | 'menu'
-  | 'arrow-left';
+  | 'arrow-left'
+  | 'sparkles';
 
 interface IconProps {
   name: IconName;
@@ -86,6 +87,7 @@ const iconPaths: Record<IconName, string> = {
   'chevron-right': 'M9 18l6-6-6-6',
   menu: 'M4 6h16M4 12h16M4 18h16',
   'arrow-left': 'M10 19l-7-7m0 0l7-7m-7 7h18',
+  sparkles: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z',
 };
 
 export default function Icon({ name, size = 16, className = '', color }: IconProps) {

@@ -58,6 +58,17 @@ const httpServer = createServer(app);
 // Initialize Socket.io
 initializeSocket(httpServer, FRONTEND_URL);
 
+// Initialize AI user on startup
+(async () => {
+  try {
+    const { getOrCreateAIUser } = await import('./services/ai-user.service');
+    await getOrCreateAIUser();
+    console.log('🤖 AI user initialized');
+  } catch (error) {
+    console.error('Failed to initialize AI user:', error);
+  }
+})();
+
 // Start server
 httpServer.listen({ port: PORT, host: '0.0.0.0' }, () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);

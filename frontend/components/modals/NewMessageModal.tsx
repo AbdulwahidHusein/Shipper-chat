@@ -194,18 +194,40 @@ export default function NewMessageModal({
                     src={user.picture}
                     name={user.name}
                     size="md"
+                    isOnline={user.isOnline}
                   />
-                  <p
+                  <div
                     style={{
-                      ...tokens.typography.styles.paragraphXSmall,
-                      color: tokens.colors.text.heading.primary,
-                      fontWeight: tokens.typography.fontWeight.regular,
-                      fontSize: '16px',
-                      lineHeight: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      flex: 1,
+                      minWidth: 0,
                     }}
                   >
-                    {user.name}
-                  </p>
+                    <p
+                      style={{
+                        ...tokens.typography.styles.paragraphXSmall,
+                        color: tokens.colors.text.heading.primary,
+                        fontWeight: tokens.typography.fontWeight.regular,
+                        fontSize: '16px',
+                        lineHeight: '16px',
+                      }}
+                    >
+                      {user.name}
+                    </p>
+                    <p
+                      style={{
+                        ...tokens.typography.styles.paragraphXSmall,
+                        color: user.isOnline
+                          ? tokens.colors.text.state.success
+                          : tokens.colors.text.placeholder,
+                        fontSize: '12px',
+                        lineHeight: '14px',
+                      }}
+                    >
+                      {user.isOnline ? 'Online' : 'Offline'}
+                    </p>
+                  </div>
                 </button>
               ))
             )}
