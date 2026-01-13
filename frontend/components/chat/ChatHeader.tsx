@@ -13,6 +13,7 @@ interface ChatHeaderProps {
   onOpenContactInfo?: () => void;
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
   onBack?: () => void;
+  onToggleMenu?: () => void;
 }
 
 export default function ChatHeader({
@@ -22,6 +23,7 @@ export default function ChatHeader({
   onOpenContactInfo,
   onOpenContextMenu,
   onBack,
+  onToggleMenu,
 }: ChatHeaderProps) {
   const isMobile = useIsMobile();
   return (
@@ -30,12 +32,36 @@ export default function ChatHeader({
         display: 'flex',
         gap: tokens.spacing[3], // 12px
         alignItems: 'center',
-        padding: `4px ${tokens.spacing[3]} ${tokens.spacing[4]} ${tokens.spacing[3]}`, // 4px 12px 16px 12px
+        padding: isMobile 
+          ? `${tokens.spacing[3]} ${tokens.spacing[3]}` // More padding on mobile
+          : `4px ${tokens.spacing[3]} ${tokens.spacing[4]} ${tokens.spacing[3]}`, // 4px 12px 16px 12px
         borderBottom: `1px solid ${tokens.colors.border.primary}`,
+        backgroundColor: tokens.colors.surface.default,
       }}
     >
-      {/* Back button on mobile */}
-      {isMobile && onBack && (
+      {/* Menu button on mobile (replaces TopBar hamburger) */}
+      {isMobile && onToggleMenu && (
+        <button
+          onClick={onToggleMenu}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '32px',
+            height: '32px',
+            backgroundColor: tokens.colors.surface.default,
+            border: `1px solid ${tokens.colors.border.primary}`,
+            borderRadius: tokens.borderRadius.base,
+            cursor: 'pointer',
+            marginRight: tokens.spacing[2],
+          }}
+        >
+          <Icon name="menu" size={20} color={tokens.colors.icon.secondary} />
+        </button>
+      )}
+      
+      {/* Back button on mobile (only if no menu toggle provided) */}
+      {isMobile && onBack && !onToggleMenu && (
         <button
           onClick={onBack}
           style={{

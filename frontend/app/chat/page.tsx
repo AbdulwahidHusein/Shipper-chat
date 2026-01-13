@@ -186,11 +186,13 @@ export default function ChatPage() {
         gap: isMobile ? tokens.spacing[2] : tokens.spacing[3], // 8px on mobile, 12px on desktop
       }}
     >
-      {/* Top Bar */}
-      <TopBar 
-        onToggleSidebar={() => setShowSidebar(!showSidebar)}
-        showSidebar={showSidebar}
-      />
+      {/* Top Bar - Hidden on mobile when chat is open */}
+      {(!isMobile || !selectedSessionId) && (
+        <TopBar 
+          onToggleSidebar={() => setShowSidebar(!showSidebar)}
+          showSidebar={showSidebar}
+        />
+      )}
 
       {/* Message List and Chat Window */}
       <div
@@ -281,6 +283,7 @@ export default function ChatPage() {
                 setShowSidebar(true);
               }
             }}
+            onToggleMenu={() => setShowSidebar(!showSidebar)}
           />
         )}
       </div>

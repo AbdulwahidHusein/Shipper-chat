@@ -55,9 +55,10 @@ interface ChatWindowProps {
   onOpenContextMenu?: (sessionId: string, position: { x: number; y: number }) => void;
   onOpenContactInfo?: () => void;
   onBack?: () => void;
+  onToggleMenu?: () => void;
 }
 
-export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo, onBack }: ChatWindowProps) {
+export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContactInfo, onBack, onToggleMenu }: ChatWindowProps) {
   const { user } = useAuth();
   const { sessions } = useSessions(true); // Include archived sessions
   const { messages, loading, sendMessage: sendMessageApi, markAllRead, markMessageAsRead } = useMessages(sessionId);
@@ -291,6 +292,7 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
         onOpenContactInfo={onOpenContactInfo}
         onOpenContextMenu={onOpenContextMenu}
         onBack={onBack}
+        onToggleMenu={onToggleMenu}
       />
 
       {/* Message Area */}
