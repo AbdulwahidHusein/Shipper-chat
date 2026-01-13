@@ -49,7 +49,6 @@ export default function MessageList({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'online' | 'offline' | 'unread' | 'archived'>('all');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [unreadButtonHovered, setUnreadButtonHovered] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -505,48 +504,6 @@ export default function MessageList({
                 }
               }}
             >
-              {/* Unread Indicator - Only visible when selected */}
-              {isSelected && (
-                <div
-                  onMouseEnter={() => setUnreadButtonHovered(true)}
-                  onMouseLeave={() => setUnreadButtonHovered(false)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                    width: '60px',
-                    minHeight: '72px', // Match conversation item height
-                    padding: `${tokens.spacing[2]} ${tokens.spacing[2]}`,
-                    backgroundColor: unreadButtonHovered ? '#178a72' : tokens.colors.brand[500], // Darker shade on hover
-                    borderRadius: tokens.borderRadius.lg,
-                    flexShrink: 0,
-                    alignSelf: 'stretch',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s ease',
-                  }}
-                >
-                  <Icon
-                    name="message-circle-2"
-                    size={18}
-                    color={tokens.colors.text.neutral.white}
-                  />
-                  <span
-                    style={{
-                      ...tokens.typography.styles.labelXSmall,
-                      color: tokens.colors.text.neutral.white,
-                      fontSize: '11px',
-                      lineHeight: '13px',
-                      fontWeight: tokens.typography.fontWeight.medium,
-                      whiteSpace: 'nowrap',
-                      textAlign: 'center',
-                    }}
-                  >
-                    Unread
-                  </span>
-                </div>
-              )}
               <div
                 style={{
                   display: 'flex',
