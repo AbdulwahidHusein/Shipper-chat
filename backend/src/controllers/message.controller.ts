@@ -17,7 +17,6 @@ import {
 } from '../services/message.service';
 import { findSessionById } from '../services/session.service';
 import { sendSuccess, sendError } from '../utils/responses';
-import { getSocketIO } from '../socket/socket.server';
 
 const createMessageSchema = z.object({
   content: z.string().min(1, 'Message content is required').max(5000),
@@ -108,38 +107,6 @@ export const sendMessage = async (req: Request, res: Response): Promise<void> =>
       sessionId,
       type: type as any,
     });
-
-    // If this is an AI session, generate AI response
-    if (session.type === 'AI') {
-      try {
-        const { generateAIResponse } = await import('../services/ai.service');
-        const { getAIUserId } = await import('../services/ai-user.service');
-        
-        // Generate AI response (async, don't wait)
-        generateAIResponse(sessionId, content)
-          .then(async (aiResponse) => {
-            const { createMessage } = await import('../services/message.service');
-            const aiMessage = await createMessage({
-              content: aiResponse,
-              senderId: getAIUserId(),
-              sessionId,
-              type: 'TEXT',
-            });
-
-            // Emit AI response via WebSocket
-            const { getSocketIO } = await import('../socket/socket.server');
-            const io = getSocketIO();
-            if (io) {
-              io.to(`session:${sessionId}`).emit('message:new', aiMessage);
-            }
-          })
-          .catch((error) => {
-            console.error('AI response generation error:', error);
-          });
-      } catch (error) {
-        console.error('AI service import error:', error);
-      }
-    }
 
     sendSuccess(res, message, 'Message sent', 201);
   } catch (error) {

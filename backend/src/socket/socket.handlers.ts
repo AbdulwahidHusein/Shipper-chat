@@ -108,6 +108,84 @@ export const setupSocketHandlers = (io: SocketServer) => {
           type: data.type as any,
         });
 
+        // If this is an AI session, generate AI response
+        if (session.type === 'AI') {
+          if (!process.env.GEMINI_API_KEY) {
+            socket.emit('message:error', {
+              sessionId: data.sessionId,
+              message: 'AI service not configured',
+            });
+          } else {
+            const { getAIUserId, getOrCreateAIUser } = await import('../services/ai-user.service');
+            const aiUserId = getAIUserId();
+            const aiUser = await getOrCreateAIUser();
+            const sessionRoom = getSessionRoom(data.sessionId);
+            
+            // Show typing indicator immediately
+            io.to(sessionRoom).emit('typing:start', {
+              sessionId: data.sessionId,
+              userId: aiUserId,
+              userName: aiUser.name,
+            });
+            
+            const { generateAIResponse } = await import('../services/ai.service');
+            
+            generateAIResponse(data.sessionId, data.content)
+              .then(async (aiResponse) => {
+                // Stop typing indicator
+                io.to(sessionRoom).emit('typing:stop', {
+                  sessionId: data.sessionId,
+                  userId: aiUserId,
+                });
+                const aiMessage = await createMessage({
+                  content: aiResponse,
+                  senderId: aiUserId,
+                  sessionId: data.sessionId,
+                  type: 'TEXT',
+                });
+
+                const userRoom = getUserRoom(userId);
+                io.to(userRoom).emit('message:new', {
+                  id: aiMessage.id,
+                  content: aiMessage.content,
+                  senderId: aiMessage.senderId,
+                  sessionId: aiMessage.sessionId,
+                  type: aiMessage.type,
+                  status: aiMessage.status,
+                  createdAt: aiMessage.createdAt.toISOString(),
+                  sender: {
+                    id: aiUser.id,
+                    name: aiUser.name,
+                    picture: aiUser.picture,
+                  },
+                });
+
+                const updatedSession = await findSessionById(data.sessionId);
+                if (updatedSession) {
+                  io.to(userRoom).emit('session:update', {
+                    id: updatedSession.id,
+                    lastMessageId: updatedSession.lastMessageId,
+                    unreadCount: updatedSession.unreadCount,
+                    updatedAt: updatedSession.updatedAt.toISOString(),
+                  });
+                }
+              })
+              .catch((error) => {
+                // Stop typing indicator on error
+                io.to(sessionRoom).emit('typing:stop', {
+                  sessionId: data.sessionId,
+                  userId: aiUserId,
+                });
+                
+                console.error('[AI] Error generating response:', error);
+                socket.emit('message:error', {
+                  sessionId: data.sessionId,
+                  message: 'Failed to generate AI response',
+                });
+              });
+          }
+        }
+
         // Determine recipient
         const recipientId =
           session.participant1Id === userId

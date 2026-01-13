@@ -32,7 +32,7 @@ export function useTypingIndicator(
           clearTimeout(existingTimeout);
         }
 
-        // Auto-stop typing after 3 seconds
+        // Auto-stop typing after 5 seconds
         const timeout = setTimeout(() => {
           setTypingUsers((prev) => {
             const newMap = new Map(prev);
@@ -40,7 +40,7 @@ export function useTypingIndicator(
             return newMap;
           });
           typingTimeoutsMap.current.delete(data.userId);
-        }, 3000);
+        }, 5000);
 
         typingTimeoutsMap.current.set(data.userId, timeout);
       }
