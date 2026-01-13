@@ -1,4 +1,4 @@
-# Shipper
+# Shipper Chat
 
 Real-time chat application with WebSocket messaging, Google OAuth authentication, and AI chat assistance.
 
