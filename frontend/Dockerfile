@@ -25,12 +25,14 @@ WORKDIR /app
 
 # Set production environment
 ENV NODE_ENV=production
+ENV PORT=8080
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm install --only=production
+# Install ALL dependencies (Next.js needs full node_modules)
+RUN npm install --production=false
 
 # Copy built application from builder
 COPY --from=builder /app/.next ./.next
@@ -42,8 +44,8 @@ COPY --from=builder /app/package.json ./package.json
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080), (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start the server (Next.js automatically uses PORT env var from Cloud Run)
-CMD ["npm", "start"]
+# Start the server with explicit PORT
+CMD ["sh", "-c", "next start -p ${PORT:-8080}"]
