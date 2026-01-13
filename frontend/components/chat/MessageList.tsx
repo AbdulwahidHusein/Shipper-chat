@@ -213,7 +213,7 @@ export default function MessageList({
         gap: tokens.spacing[6], // 24px
         minHeight: 0,
         overflow: 'hidden',
-        height: isMobile ? '100%' : 'auto',
+        height: '100%', // Always full height to match Figma design
       }}
     >
       {/* Header */}

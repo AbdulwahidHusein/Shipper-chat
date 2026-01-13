@@ -188,6 +188,7 @@ export default function ChatPage() {
                 }
               : {
                   flex: '0 0 auto',
+                  height: '100%', // Ensure full height for white background
                 }),
           }}
         >
@@ -218,7 +219,9 @@ export default function ChatPage() {
                     transform: showSidebar ? 'translateX(0)' : 'translateX(-100%)',
                     transition: 'transform 0.3s ease-in-out',
                   }
-                : {}),
+                : {
+                    height: '100%', // Full height on desktop for white background
+                  }),
             }}
             onClick={(e) => isMobile && e.stopPropagation()}
           >

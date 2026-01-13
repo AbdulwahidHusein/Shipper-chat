@@ -269,10 +269,18 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
         minHeight: 0,
         backgroundColor: tokens.colors.surface.default,
         borderRadius: isMobile ? 0 : tokens.borderRadius['2xl'], // No border radius on mobile
-        padding: tokens.spacing[3],
+        padding: isMobile ? `${tokens.spacing[3]} ${tokens.spacing[3]} 0` : tokens.spacing[3],
+        paddingBottom: isMobile ? 0 : tokens.spacing[3], // Remove bottom padding on mobile, handled by input container
         overflow: 'hidden',
         width: isMobile && sessionId ? '100%' : 'auto', // Full width on mobile when session selected
-        ...(isMobile && sessionId ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } : {}),
+        ...(isMobile && sessionId ? { 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0,
+          paddingBottom: 0, // Remove bottom padding, input container handles it
+        } : {}),
       }}
     >
       {/* Chat Header */}
@@ -313,7 +321,13 @@ export default function ChatWindow({ sessionId, onOpenContextMenu, onOpenContact
       )}
 
       {/* Input Area */}
-      <div>
+      <div
+        style={{
+          paddingBottom: isMobile ? '32px' : 0, // Extra padding for mobile safe area (home indicator, etc.)
+          paddingLeft: isMobile ? tokens.spacing[3] : 0,
+          paddingRight: isMobile ? tokens.spacing[3] : 0,
+        }}
+      >
         {/* Hidden file input */}
         <input
           ref={fileInputRef}
