@@ -1,6 +1,6 @@
 /**
- * Login Page
- * Clean, professional login UI matching Figma design
+ * Landing/Login Page
+ * Conversion-focused, modern, professional design
  */
 
 'use client';
@@ -28,7 +28,6 @@ export default function LoginPage() {
     
     if (successParam) {
       setAuthSuccess(true);
-      // Refresh user data after successful auth
       setTimeout(() => {
         refreshUser();
         window.location.href = '/chat';
@@ -37,7 +36,6 @@ export default function LoginPage() {
   }, [searchParams, refreshUser]);
 
   useEffect(() => {
-    // If already authenticated, redirect to chat
     if (isAuthenticated) {
       window.location.href = '/chat';
     }
@@ -50,65 +48,74 @@ export default function LoginPage() {
   return (
     <div
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         minHeight: '100vh',
         width: '100vw',
         backgroundColor: tokens.colors.background.primary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: tokens.spacing[6],
       }}
     >
       <div
         style={{
           width: '100%',
-          maxWidth: '400px',
+          maxWidth: '480px',
           display: 'flex',
           flexDirection: 'column',
-          gap: tokens.spacing[6],
+          gap: tokens.spacing[8],
           alignItems: 'center',
         }}
       >
-        {/* Logo/Brand */}
+        {/* Hero Section */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             gap: tokens.spacing[4],
             alignItems: 'center',
-            marginBottom: tokens.spacing[4],
+            textAlign: 'center',
           }}
         >
           <div
             style={{
-              width: '72px',
-              height: '72px',
+              width: '80px',
+              height: '80px',
               borderRadius: tokens.borderRadius.full,
               backgroundColor: tokens.colors.brand[500],
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              marginBottom: tokens.spacing[2],
             }}
           >
-            <Icon name="chat" size={36} color={tokens.colors.text.neutral.white} />
+            <Icon name="chat" size={40} color={tokens.colors.text.neutral.white} />
           </div>
+          
           <h1
             style={{
               ...tokens.typography.styles.subheadlineSemibold,
               color: tokens.colors.text.neutral.main,
-              textAlign: 'center',
+              fontSize: '32px',
+              lineHeight: '40px',
+              fontWeight: tokens.typography.fontWeight.semibold,
+              margin: 0,
             }}
           >
-            Welcome to Shipper
+            Connect instantly,<br />chat seamlessly
           </h1>
+          
           <p
             style={{
               ...tokens.typography.styles.paragraphSmall,
               color: tokens.colors.text.neutral.sub,
-              textAlign: 'center',
+              fontSize: '18px',
+              lineHeight: '28px',
+              maxWidth: '400px',
+              margin: 0,
             }}
           >
-            Sign in to continue to your chat
+            Real-time messaging with AI assistance. Fast, secure, and beautifully simple.
           </p>
         </div>
 
@@ -150,14 +157,14 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Login Card */}
+        {/* CTA Card */}
         <div
           style={{
             width: '100%',
             backgroundColor: tokens.colors.surface.default,
             borderRadius: tokens.borderRadius['2xl'],
             padding: tokens.spacing[8],
-            boxShadow: '0px 4px 32px 0px rgba(0, 0, 0, 0.12)',
+            boxShadow: '0px 8px 40px 0px rgba(0, 0, 0, 0.08)',
             display: 'flex',
             flexDirection: 'column',
             gap: tokens.spacing[6],
@@ -167,13 +174,15 @@ export default function LoginPage() {
             variant="primary"
             size="md"
             onClick={handleGoogleLogin}
-            className="w-full"
             style={{
               width: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: tokens.spacing[3],
+              padding: `${tokens.spacing[4]} ${tokens.spacing[6]}`,
+              fontSize: '16px',
+              fontWeight: tokens.typography.fontWeight.medium,
             }}
           >
             <svg
@@ -200,41 +209,8 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            Sign in with Google
+            Continue with Google
           </Button>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: tokens.spacing[2],
-              width: '100%',
-            }}
-          >
-            <div
-              style={{
-                flex: 1,
-                height: '1px',
-                backgroundColor: tokens.colors.border.primary,
-              }}
-            />
-            <span
-              style={{
-                ...tokens.typography.styles.paragraphXSmall,
-                color: tokens.colors.text.placeholder,
-                padding: `0 ${tokens.spacing[2]}`,
-              }}
-            >
-              Secure authentication
-            </span>
-            <div
-              style={{
-                flex: 1,
-                height: '1px',
-                backgroundColor: tokens.colors.border.primary,
-              }}
-            />
-          </div>
 
           <p
             style={{
@@ -242,10 +218,77 @@ export default function LoginPage() {
               color: tokens.colors.text.placeholder,
               textAlign: 'center',
               lineHeight: '1.5',
+              margin: 0,
             }}
           >
-            By signing in, you agree to our Terms of Service and Privacy Policy
+            By continuing, you agree to our Terms of Service and Privacy Policy
           </p>
+        </div>
+
+        {/* Features */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacing[4],
+            width: '100%',
+            marginTop: tokens.spacing[2],
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacing[3],
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="checks" size={18} color={tokens.colors.brand[500]} />
+            <span
+              style={{
+                ...tokens.typography.styles.paragraphSmall,
+                color: tokens.colors.text.neutral.sub,
+              }}
+            >
+              Real-time messaging
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacing[3],
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="sparkles" size={18} color={tokens.colors.brand[500]} />
+            <span
+              style={{
+                ...tokens.typography.styles.paragraphSmall,
+                color: tokens.colors.text.neutral.sub,
+              }}
+            >
+              AI-powered assistance
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacing[3],
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="checks" size={18} color={tokens.colors.brand[500]} />
+            <span
+              style={{
+                ...tokens.typography.styles.paragraphSmall,
+                color: tokens.colors.text.neutral.sub,
+              }}
+            >
+              Secure & private
+            </span>
+          </div>
         </div>
       </div>
     </div>
