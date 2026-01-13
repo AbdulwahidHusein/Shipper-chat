@@ -43,7 +43,7 @@ export default function MessageList({
   onOpenContextMenu,
   onClose,
 }: MessageListProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { sessions, loading, archiveSession, markUnread } = useSessions(true); // Include archived sessions
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
@@ -806,6 +806,107 @@ export default function MessageList({
         )}
       </div>
 
+      {/* Profile & Logout Section - Mobile only, at bottom */}
+      {isMobile && user && (
+        <div
+          style={{
+            marginTop: 'auto',
+            paddingTop: tokens.spacing[6],
+            borderTop: `1px solid ${tokens.colors.border.primary}`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: tokens.spacing[2],
+          }}
+        >
+          <button
+            onClick={() => {
+              // TODO: Open profile modal
+              console.log('Profile clicked');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacing[3],
+              padding: tokens.spacing[3],
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: tokens.borderRadius.base,
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'background-color 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = tokens.colors.surface.weak;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <Avatar src={user.picture} name={user.name} size="md" />
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+              <p
+                style={{
+                  ...tokens.typography.styles.paragraphSmall,
+                  color: tokens.colors.text.neutral.main,
+                  fontWeight: tokens.typography.fontWeight.medium,
+                  margin: 0,
+                }}
+              >
+                {user.name}
+              </p>
+              <p
+                style={{
+                  ...tokens.typography.styles.paragraphXSmall,
+                  color: tokens.colors.text.placeholder,
+                  margin: 0,
+                }}
+              >
+                {user.email}
+              </p>
+            </div>
+            <Icon name="chevron-right" size={16} color={tokens.colors.icon.secondary} />
+          </button>
+
+          <button
+            onClick={logout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: tokens.spacing[3],
+              padding: tokens.spacing[3],
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderRadius: tokens.borderRadius.base,
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'background-color 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = tokens.colors.surface.weak;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <Icon name="logout" size={20} color={tokens.colors.icon.secondary} />
+            <span
+              style={{
+                ...tokens.typography.styles.paragraphSmall,
+                color: tokens.colors.text.neutral.main,
+              }}
+            >
+              Logout
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
