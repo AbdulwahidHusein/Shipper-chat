@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { tokens } from '@/lib/design-tokens';
 import { useSessions } from '@/hooks/useSessions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +45,27 @@ export default function MessageList({
   const { sessions, loading, archiveSession, markUnread } = useSessions(true); // Include archived sessions
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'online' | 'offline' | 'unread' | 'archived'>('all');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [unreadButtonHovered, setUnreadButtonHovered] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+        setShowFilterDropdown(false);
+      }
+    };
+
+    if (showFilterDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFilterDropdown]);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
   const [swipedSessionId, setSwipedSessionId] = useState<string | null>(null);
@@ -175,9 +196,34 @@ export default function MessageList({
   };
 
   const filteredSessions = sessions.filter((session) => {
-    if (!searchQuery || !user) return true;
-    const otherParticipant = getOtherParticipant(session, user.id);
-    return otherParticipant?.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!user) return false;
+    
+    // Search filter
+    if (searchQuery) {
+      const otherParticipant = getOtherParticipant(session, user.id);
+      if (!otherParticipant?.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+    }
+    
+    // Type filter
+    if (filterType === 'archived') {
+      return session.isArchived === true;
+    }
+    if (filterType === 'unread') {
+      return (session.unreadCount || 0) > 0 && !session.isArchived;
+    }
+    if (filterType === 'online') {
+      const otherParticipant = getOtherParticipant(session, user.id);
+      return otherParticipant?.isOnline === true && !session.isArchived;
+    }
+    if (filterType === 'offline') {
+      const otherParticipant = getOtherParticipant(session, user.id);
+      return otherParticipant?.isOnline === false && !session.isArchived;
+    }
+    
+    // 'all' - show non-archived
+    return !session.isArchived;
   });
 
   if (loading) {
@@ -280,22 +326,81 @@ export default function MessageList({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1"
         />
-        <button
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '40px',
-            height: '40px',
-            backgroundColor: tokens.colors.surface.default,
-            border: `1px solid ${tokens.colors.border.primary}`,
-            borderRadius: tokens.borderRadius.md, // 10px
-            cursor: 'pointer',
-            padding: '10px',
-          }}
-        >
-          <Icon name="filter" size={18} color={tokens.colors.icon.secondary} />
-        </button>
+        <div ref={filterDropdownRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+              backgroundColor: filterType !== 'all' ? tokens.colors.brand[500] : tokens.colors.surface.default,
+              border: `1px solid ${filterType !== 'all' ? tokens.colors.brand[500] : tokens.colors.border.primary}`,
+              borderRadius: tokens.borderRadius.md, // 10px
+              cursor: 'pointer',
+              padding: '10px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <Icon 
+              name="filter" 
+              size={18} 
+              color={filterType !== 'all' ? tokens.colors.text.neutral.white : tokens.colors.icon.secondary} 
+            />
+          </button>
+          {showFilterDropdown && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: tokens.spacing[2],
+                backgroundColor: tokens.colors.surface.default,
+                border: `1px solid ${tokens.colors.border.primary}`,
+                borderRadius: tokens.borderRadius.lg,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                zIndex: 1000,
+                minWidth: '150px',
+                padding: tokens.spacing[2],
+              }}
+            >
+              {(['all', 'online', 'offline', 'unread', 'archived'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => {
+                    setFilterType(filter);
+                    setShowFilterDropdown(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: `${tokens.spacing[2]} ${tokens.spacing[3]}`,
+                    textAlign: 'left',
+                    backgroundColor: filterType === filter ? tokens.colors.background.primary : 'transparent',
+                    border: 'none',
+                    borderRadius: tokens.borderRadius.base,
+                    cursor: 'pointer',
+                    ...tokens.typography.styles.paragraphSmall,
+                    color: filterType === filter ? tokens.colors.brand[500] : tokens.colors.text.neutral.main,
+                    textTransform: 'capitalize',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (filterType !== filter) {
+                      e.currentTarget.style.backgroundColor = tokens.colors.surface.weak;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (filterType !== filter) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {filter === 'all' ? 'All' : filter === 'online' ? 'Online' : filter === 'offline' ? 'Offline' : filter === 'unread' ? 'Unread' : 'Archived'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Conversation List */}
@@ -380,6 +485,8 @@ export default function MessageList({
               {/* Unread Indicator - Only visible when selected */}
               {isSelected && (
                 <div
+                  onMouseEnter={() => setUnreadButtonHovered(true)}
+                  onMouseLeave={() => setUnreadButtonHovered(false)}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -389,10 +496,12 @@ export default function MessageList({
                     width: '60px',
                     minHeight: '72px', // Match conversation item height
                     padding: `${tokens.spacing[2]} ${tokens.spacing[2]}`,
-                    backgroundColor: tokens.colors.brand[500],
+                    backgroundColor: unreadButtonHovered ? '#178a72' : tokens.colors.brand[500], // Darker shade on hover
                     borderRadius: tokens.borderRadius.lg,
                     flexShrink: 0,
                     alignSelf: 'stretch',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
                   }}
                 >
                   <Icon
